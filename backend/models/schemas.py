@@ -1,12 +1,51 @@
-from pydantic import BaseModel
-from typing import Any
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from datetime import datetime
 
-class QuizSubmission(BaseModel):
-    student_id: str
-    quiz_id: str
-    answers: dict[str, Any]
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(unique=True, index=True)
+    name: str
+    hashed_password: str
+    role: str = "student"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-class AssignmentSubmission(BaseModel):
-    student_id: str
-    assignment_id: str
+class ChatMessage(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    role: str
     content: str
+    session_id: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class QuizAttempt(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    topic: str
+    score: float
+    total: int
+    questions_json: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Assignment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    title: str
+    student_answer: str
+    ai_score: Optional[float] = None
+    ai_feedback: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ChatRequest(SQLModel):
+    message: str
+    session_id: str = "default"
+
+class QuizRequest(SQLModel):
+    topic: str
+    num_questions: int = 5
+    difficulty: str = "medium"
+
+class AssignmentRequest(SQLModel):
+    title: str
+    student_answer: str
+    rubric: Optional[str] = None
