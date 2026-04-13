@@ -12,3 +12,11 @@ def create_db_and_tables():
 def get_session():
     with Session(engine) as session:
         yield session
+
+def get_chat_history(student_id: str):
+    # TODO: Implement DB fetch
+    return []
+
+def get_student_analytics(student_id: str):
+    # TODO: Implement database logic
+    return {"total_quizzes": 0, "avg_score": 0, "streak": 0}
