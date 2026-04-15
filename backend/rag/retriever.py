@@ -1,14 +1,17 @@
-from langchain.vectorstores import FAISS
-from langchain.embeddings import OpenAIEmbeddings
+import os
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from dotenv import load_dotenv
 
-_db = None
+load_dotenv()
 
-def _load_db(index_path: str = "faiss_index"):
-    global _db
-    if _db is None:
-        _db = FAISS.load_local(index_path, OpenAIEmbeddings())
-    return _db
+FAISS_PATH = os.getenv("FAISS_INDEX_PATH", "./data/faiss_index")
 
-def retrieve_context(query: str, k: int = 4) -> str:
-    docs = _load_db().similarity_search(query, k=k)
-    return "\n".join(d.page_content for d in docs)
+
+def get_retriever(k: int = 5):
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/text-embedding-004",
+        google_api_key=os.getenv("GEMINI_API_KEY")
+    )
+    db = FAISS.load_local(FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
+    return db.as_retriever(search_kwargs={"k": k})

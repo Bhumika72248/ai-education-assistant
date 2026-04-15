@@ -359,7 +359,7 @@ def get_session():
         yield session
 ```
 
-### Step 5 — Create `backend/models/schemas.py`
+### Step 5 — Create `backend/models/schemas.py` 
 
 ```python
 from sqlmodel import SQLModel, Field
