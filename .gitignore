@@ -22,3 +22,11 @@ frontend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Additional generic ignores
+venv/
+__pycache__/
+*.pyc
+*.db
+backend/my.txt
+node_modules/

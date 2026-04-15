@@ -49,3 +49,15 @@ class AssignmentRequest(SQLModel):
     title: str
     student_answer: str
     rubric: Optional[str] = None
+
+class QuizSubmission(SQLModel):
+    user_id: Optional[int] = None
+    topic: str
+    answers: dict
+
+class AssignmentSubmission(SQLModel):
+    user_id: Optional[int] = None
+    title: str
+    student_answer: str
+
+
