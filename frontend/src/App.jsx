@@ -8,6 +8,7 @@ import Analytics from "./pages/Analytics";
 import Notes from "./pages/Notes";
 import Assignment from "./pages/Assignment";
 import Teacher from "./pages/Teacher";
+import StudentHub from "./pages/StudentHub";
 import Navbar from "./components/Navbar";
 
 const PrivateRoute = ({ children }) => {
@@ -23,11 +24,12 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={
           <PrivateRoute>
-            <div className="min-h-screen bg-gray-50">
+            <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
               <Navbar />
-              <div className="max-w-6xl mx-auto px-4 py-6">
+              <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/student" element={<StudentHub />} />
                   <Route path="/chat" element={<Chat />} />
                   <Route path="/quiz" element={<Quiz />} />
                   <Route path="/analytics" element={<Analytics />} />
