@@ -44,6 +44,22 @@ class QuizRequest(SQLModel):
     topic: str
     num_questions: int = 5
     difficulty: str = "medium"
+    adaptive: bool = False
+
+class YouTubeQuizRequest(SQLModel):
+    url: str
+
+class ExamQuizRequest(SQLModel):
+    exam: str
+    section: str
+    num_questions: int = 5
+
+class QuizAttemptCreate(SQLModel):
+    user_id: Optional[int] = None
+    topic: str
+    score: float
+    total: int
+    questions_json: str
 
 class AssignmentRequest(SQLModel):
     title: str

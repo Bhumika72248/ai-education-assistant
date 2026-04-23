@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import api from "../api/client";
 
 const QUICK_LINKS = [
   { to: "/student", icon: "⏱️", label: "Stopwatch", sub: "Track study time", color: "var(--accent-light)", border: "var(--accent)" },
@@ -10,6 +11,7 @@ const QUICK_LINKS = [
   { to: "/student", icon: "📊", label: "Time Spent", sub: "Weekly hours", color: "#f5f3ff", border: "#8b5cf6" },
   { to: "/student", icon: "📄", label: "Notes PDF", sub: "Export & print", color: "#f0fdf4", border: "#22c55e" },
   { to: "/chat",    icon: "💬", label: "AI Tutor",  sub: "Ask anything",   color: "var(--accent-light)", border: "var(--accent)" },
+  { to: "/quiz",    icon: "🎯", label: "Quiz",      sub: "Test knowledge", color: "#fef2f2", border: "#ef4444" },
 ];
 
 export default function Dashboard() {
@@ -25,20 +27,53 @@ export default function Dashboard() {
       .then((data) => setAnalytics(data))
       .catch(() => setAnalytics(null));
   }, []);
+  const navigate = useNavigate();
+  const [loadingQuick5, setLoadingQuick5] = useState(false);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  const handleQuick5 = async () => {
+    setLoadingQuick5(true);
+    try {
+      const res = await api.get("/quiz/weakest-topic");
+      const topic = res.data.topic;
+      navigate(`/quiz?quick5=${encodeURIComponent(topic)}`);
+    } catch (err) {
+      console.error(err);
+      navigate(`/quiz?quick5=${encodeURIComponent("General Aptitude")}`);
+    } finally {
+      setLoadingQuick5(false);
+    }
+  };
+
   return (
     <div className="fade-in">
-      {/* Welcome */}
-      <div className="card" style={{ marginBottom: 20, background: "var(--accent-light)", border: "1px solid #c7d2fe" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px", color: "var(--accent)" }}>
-          {greeting}, Priya 👋
-        </h1>
-        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>
-          Ready to study? You have 3 upcoming events this week.
-        </p>
+      {/* Welcome & Quick 5 Banner */}
+      <div className="card" style={{ marginBottom: 20, background: "linear-gradient(to right, var(--accent-light), #e0e7ff)", border: "1px solid #c7d2fe", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 6px", color: "var(--accent)" }}>
+            {greeting}, Priya 👋
+          </h1>
+          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 15 }}>
+            Ready to study? You have 3 upcoming events this week.
+          </p>
+        </div>
+        
+        {/* Quick 5 Button */}
+        <button 
+          onClick={handleQuick5}
+          disabled={loadingQuick5}
+          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-70"
+          style={{ border: "none", cursor: loadingQuick5 ? "wait" : "pointer" }}
+        >
+          {loadingQuick5 ? (
+            <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          ) : (
+            <span style={{ fontSize: "20px" }}>⚡</span>
+          )}
+          {loadingQuick5 ? "Launching..." : "Quick 5 Quiz"}
+        </button>
       </div>
 
       {/* Quick access grid */}
