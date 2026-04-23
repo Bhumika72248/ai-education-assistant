@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime
 
 class User(SQLModel, table=True):
@@ -54,6 +54,7 @@ class QuizSubmission(SQLModel):
     user_id: Optional[int] = None
     topic: str
     answers: dict
+    questions: list[dict[str, Any]]
 
 class AssignmentSubmission(SQLModel):
     user_id: Optional[int] = None

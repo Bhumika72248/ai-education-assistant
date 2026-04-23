@@ -2,7 +2,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from db import get_session
-from models.schemas import QuizRequest, QuizAttempt
+from models.schemas import QuizRequest, QuizAttempt, QuizSubmission
 from agents.quiz_agent import generate_quiz
 
 router = APIRouter()
@@ -15,24 +15,22 @@ async def generate(req: QuizRequest):
 
 
 @router.post("/submit")
-async def submit(
-    topic: str,
-    user_id: int,
-    answers: dict,
-    questions_json: str,
-    session: Session = Depends(get_session)
-):
-    questions = json.loads(questions_json)
+async def submit(req: QuizSubmission, session: Session = Depends(get_session)):
+    questions = req.questions
+    if not questions:
+        raise HTTPException(status_code=400, detail="Questions are required")
+
     correct = sum(
         1 for q in questions
-        if answers.get(str(q["id"]), "").upper() == q["correct"].upper()
+        if str(req.answers.get(str(q.get("id")), "")).upper() == str(q.get("correct", "")).upper()
     )
     total = len(questions)
     score = round((correct / total) * 100, 1) if total else 0
+    questions_json = json.dumps(questions)
 
     attempt = QuizAttempt(
-        user_id=user_id,
-        topic=topic,
+        user_id=req.user_id or 1,
+        topic=req.topic,
         score=score,
         total=total,
         questions_json=questions_json,

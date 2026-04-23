@@ -30,16 +30,29 @@ DEFAULT_RUBRIC = "Evaluate based on accuracy, clarity, completeness, and logical
 
 
 def evaluate_assignment(title: str, student_answer: str, rubric: str = None) -> dict:
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is missing in backend/.env")
+
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
+        google_api_key=api_key,
         temperature=0.2,
     )
     chain = EVAL_PROMPT | llm
-    result = chain.invoke({
+    payload = {
         "title": title,
         "rubric": rubric or DEFAULT_RUBRIC,
         "student_answer": student_answer,
-    })
+    }
+
+    try:
+        result = chain.invoke(payload)
+    except Exception as exc:
+        raise RuntimeError(f"AI evaluation failed: {exc}") from exc
+
     text = result.content.strip().replace("```json", "").replace("```", "")
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("AI returned an invalid response format.") from exc

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const QUICK_LINKS = [
   { to: "/student", icon: "⏱️", label: "Stopwatch", sub: "Track study time", color: "var(--accent-light)", border: "var(--accent)" },
@@ -12,6 +13,19 @@ const QUICK_LINKS = [
 ];
 
 export default function Dashboard() {
+  const [analytics, setAnalytics] = useState(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("user_id");
+    const parsed = Number(raw);
+    const userId = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+
+    fetch(`/analytics/me?user_id=${userId}`)
+      .then((res) => res.json())
+      .then((data) => setAnalytics(data))
+      .catch(() => setAnalytics(null));
+  }, []);
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
@@ -66,6 +80,58 @@ export default function Dashboard() {
             <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{s.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* Personalized weekly plan */}
+      <div className="card" style={{ marginTop: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>This Week's Learning Path</h2>
+          <Link to="/analytics" style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
+            View analytics
+          </Link>
+        </div>
+
+        {!analytics ? (
+          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 13 }}>Loading your weekly plan...</p>
+        ) : !analytics.learning_path ? (
+          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 13 }}>
+            Complete a quiz to generate your personalized 7-day learning path.
+          </p>
+        ) : (
+          <div>
+            <p style={{ marginTop: 0, marginBottom: 10, fontSize: 13, color: "var(--text-secondary)" }}>
+              Goal: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{analytics.learning_path.weekly_goal}</span>
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+              {(analytics.learning_path.days || []).slice(0, 7).map((dayPlan) => (
+                <div
+                  key={dayPlan.day}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    background: "#fafafa",
+                  }}
+                >
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>
+                    Day {dayPlan.day}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                    {dayPlan.focus}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+                    {dayPlan.estimated_time}
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--text-primary)" }}>
+                    {(dayPlan.tasks || []).slice(0, 3).map((task, idx) => (
+                      <li key={idx}>{task}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
