@@ -27,6 +27,7 @@ export default function Dashboard() {
       .then((data) => setAnalytics(data))
       .catch(() => setAnalytics(null));
   }, []);
+
   const navigate = useNavigate();
   const [loadingQuick5, setLoadingQuick5] = useState(false);
 
