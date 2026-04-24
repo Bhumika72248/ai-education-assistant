@@ -1,166 +1,230 @@
-import { useEffect, useState } from "react";
-import RadarChart from "../components/RadarChart";
-import CorrelationChart from "../components/CorrelationChart";
-import { Activity, Target, TrendingUp, Zap } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import MomentumGauge      from "../components/analytics/MomentumGauge";
+import TopicMasteryTree   from "../components/analytics/TopicMasteryTree";
+import FocusCheck         from "../components/analytics/FocusCheck";
+import DeadlinePredictor  from "../components/analytics/DeadlinePredictor";
+import InsightCards       from "../components/analytics/InsightCards";
+import SkeletonBlock      from "../components/analytics/SkeletonBlock";
+
+const API = "http://localhost:8000/analytics";
+const USER_ID = 1;
+
+const SECTION = ({ title, children, style = {}, delay = 0 }) => (
+  <section style={{
+    background: "#FFFFFF",
+    borderRadius: 16,
+    border: "1px solid #E5E7EB",
+    padding: "28px 28px",
+    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+    animation: `fadeInDown 0.4s ease-out ${delay}s both`,
+    ...style
+  }}>
+    {title && (
+      <h2 style={{
+        color: "#111827", fontFamily: "'DM Sans',sans-serif",
+        fontSize: 18, fontWeight: 700, margin: "0 0 20px",
+        letterSpacing: -0.3
+      }}>{title}</h2>
+    )}
+    {children}
+  </section>
+);
 
 export default function Analytics() {
-  const [radarData, setRadarData] = useState(null);
-  const [correlationData, setCorrelationData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [momentum,    setMomentum]    = useState(null);
+  const [mastery,     setMastery]     = useState(null);
+  const [burnout,     setBurnout]     = useState(null);
+  const [deadlines,   setDeadlines]   = useState(null);
+  const [insights,    setInsights]    = useState(null);
+  const [insightMeta, setInsightMeta] = useState({ generatedAt: null });
+  const [loading,     setLoading]     = useState(true);
 
-  // Mock user ID for now
-  const userId = 1;
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [radarRes, correlationRes] = await Promise.all([
-          fetch(`http://localhost:8000/analytics/radar?user_id=${userId}`),
-          fetch(`http://localhost:8000/analytics/engagement-correlation?user_id=${userId}`)
-        ]);
-
-        if (!radarRes.ok || !correlationRes.ok) throw new Error("Backend not responding");
-
-        const radar = await radarRes.json();
-        const correlation = await correlationRes.json();
-
-        setRadarData(radar);
-        setCorrelationData(correlation);
-      } catch (error) {
-        console.warn("Backend unavailable, using mock data for charts:", error);
-        // Fallback Mock Data for robust Hackathon Demo
-        setRadarData({
-          labels: ["Accuracy", "Speed", "Consistency", "Complexity", "Retention"],
-          data: [85, 70, 92, 60, 88]
-        });
-        setCorrelationData([
-          { date: "Apr 15", score: 60, engagement: 45 },
-          { date: "Apr 16", score: 75, engagement: 60 },
-          { date: "Apr 17", score: 85, engagement: 88 },
-          { date: "Apr 18", score: 70, engagement: 50 },
-          { date: "Apr 19", score: 90, engagement: 95 },
-          { date: "Apr 20", score: 88, engagement: 85 },
-          { date: "Apr 21", score: 95, engagement: 98 }
-        ]);
-      } finally {
-        setLoading(false);
+  const fetchAll = useCallback(async () => {
+    try {
+      const [momRes, masRes, burnRes, deadRes, insRes] = await Promise.all([
+        fetch(`${API}/momentum?user_id=${USER_ID}`),
+        fetch(`${API}/mastery?user_id=${USER_ID}`),
+        fetch(`${API}/burnout-flags?user_id=${USER_ID}`),
+        fetch(`${API}/deadline-predictions?user_id=${USER_ID}`),
+        fetch(`${API}/insights?user_id=${USER_ID}`),
+      ]);
+      if (momRes.ok)  setMomentum(await momRes.json());
+      if (masRes.ok)  setMastery(await masRes.json());
+      if (burnRes.ok) setBurnout(await burnRes.json());
+      if (deadRes.ok) setDeadlines(await deadRes.json());
+      if (insRes.ok) {
+        const data = await insRes.json();
+        setInsights(data);
+        setInsightMeta({ generatedAt: new Date().toISOString() });
       }
-    };
+    } catch (e) {
+      console.warn("Analytics fetch error, using mock data:", e);
+      setMomentum({ score: 78, submission_pace_score: 80, time_trend_score: 72, consistency_score: 82, direction: "rising",
+        sparkline: [40,45,55,50,60,65,70,68,75,80,78,82,85,78] });
+      setMastery([
+        { topic_id:"Basics",          mastery_percent: 95, tier:"mastered",   prereq: null },
+        { topic_id:"Data Types",      mastery_percent: 82, tier:"mastered",   prereq:"Basics" },
+        { topic_id:"Functions",       mastery_percent: 65, tier:"proficient", prereq:"Basics" },
+        { topic_id:"OOP",             mastery_percent: 40, tier:"learning",   prereq:"Functions" },
+        { topic_id:"Algorithms",      mastery_percent: 10, tier:"locked",     prereq:"Functions" },
+        { topic_id:"Data Structures", mastery_percent:  0, tier:"locked",     prereq:"OOP" },
+      ]);
+      setBurnout([
+        { topic_id:"Algorithms",      flag_type:"burnout_risk",   message:"You've been spending a lot of time on Algorithms lately — try a short break and come back fresh." },
+        { topic_id:"Data Structures", flag_type:"avoidance_risk", message:"Data Structures hasn't been touched in 10 days and has an upcoming assignment." },
+      ]);
+      setDeadlines([
+        { assignment_id:101, title:"Implement Dijkstra",    topic:"Algorithms",      due_in_days:3,  prediction:"at_risk",   start_by_date:"Today"       },
+        { assignment_id:102, title:"Binary Tree Traversal", topic:"Data Structures", due_in_days:7,  prediction:"on_track",  start_by_date:"In 3 days"   },
+        { assignment_id:103, title:"Sorting Visualization", topic:"Algorithms",      due_in_days:12, prediction:"start_now", start_by_date:"Tomorrow"    },
+      ]);
+      setInsights([
+        { type:"trend",     text:"You score 38% higher on topics you revisit within 48 hours." },
+        { type:"clock",     text:"Your focus is sharpest during morning sessions between 8 AM and 11 AM." },
+        { type:"lightbulb", text:"Taking a 5-minute break every hour boosts your retention by 15%." },
+      ]);
+      setInsightMeta({ generatedAt: new Date().toISOString() });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-    fetchData();
-  }, [userId]);
+  const refreshInsights = async () => {
+    try {
+      const res = await fetch(`${API}/insights?user_id=${USER_ID}`);
+      if (res.ok) {
+        setInsights(await res.json());
+        setInsightMeta({ generatedAt: new Date().toISOString() });
+      }
+    } catch (_) {}
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
+  const updatedAt = new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
 
   return (
-    <div className="fade-in space-y-8 pb-10">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Advanced Insights</h1>
-        <p className="text-gray-500 mt-1">Deep dive into your learning behavior and performance metrics.</p>
-      </div>
+    <div style={{
+      minHeight: "100vh",
+      background: "#F9FAFB",
+      fontFamily: "'DM Sans', 'Outfit', sans-serif",
+      padding: "0 0 60px",
+      /* Override any global max-width / padding from App.jsx */
+      marginLeft:  "calc(-20px - max(0px, (100vw - 1200px)/2))",
+      marginRight: "calc(-20px - max(0px, (100vw - 1200px)/2))",
+      boxSizing: "border-box"
+    }}>
+      <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+      <style>{`
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position:  200% 0; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50%       { opacity: 0.8; transform: scale(1.08); }
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
 
-      {/* Top Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <InsightCard 
-          icon={<Zap className="text-yellow-500" />} 
-          title="Learning Power" 
-          value="Level 12" 
-          sub="Top 15% this week" 
-        />
-        <InsightCard 
-          icon={<Target className="text-indigo-500" />} 
-          title="Avg. Accuracy" 
-          value={radarData ? `${radarData.data[0]}%` : "0%"} 
-          sub="+2.4% from last month" 
-        />
-        <InsightCard 
-          icon={<Activity className="text-green-500" />} 
-          title="Avg. Focus" 
-          value="84%" 
-          sub="Stable consistency" 
-        />
-        <InsightCard 
-          icon={<TrendingUp className="text-blue-500" />} 
-          title="Study Streak" 
-          value="7 Days" 
-          sub="New personal record!" 
-        />
-      </div>
+      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 24px" }}>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Radar Chart Section */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-800">Skills Radar</h2>
-            <div className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded-full">AI Analysis</div>
+        {/* ── Page Header ── */}
+        <div style={{
+          display:"flex", justifyContent:"space-between", alignItems:"flex-end",
+          padding:"36px 0 28px",
+          animation:"fadeInDown 0.35s ease-out 0s both"
+        }}>
+          <div>
+            <h1 style={{ color:"#111827", fontSize:32, fontWeight:800, margin:0, letterSpacing:-1 }}>Your Analytics</h1>
+            <p style={{ color:"#6B7280", margin:"6px 0 0", fontSize:13 }}>Last updated {updatedAt}</p>
           </div>
-          {radarData && <RadarChart data={radarData} />}
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-            <p className="text-sm text-gray-600 leading-relaxed">
-              <span className="font-bold text-indigo-600">Coach's Advice:</span> Your <span className="font-semibold text-gray-800">Accuracy</span> is excellent, but your <span className="font-semibold text-gray-800">Complexity</span> score is low. Try taking some "Hard" level quizzes to balance your skill map.
-            </p>
-          </div>
+          <span style={{
+            background:"#EEF2FF", border:"1px solid #E0E7FF",
+            color:"#4F46E5", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600
+          }}>Student View</span>
         </div>
 
-        {/* Correlation Section */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-800">Focus vs. Performance</h2>
-            <div className="px-3 py-1 bg-green-50 text-green-600 text-xs font-semibold rounded-full">Live Correlation</div>
-          </div>
-          {correlationData && <CorrelationChart data={correlationData} />}
-          <div className="mt-6 p-4 bg-green-50 rounded-xl">
-            <p className="text-sm text-green-700 leading-relaxed">
-              <span className="font-bold">Insight:</span> On days where your engagement was above <span className="font-bold">80%</span>, your quiz scores were <span className="font-bold text-green-800">24% higher</span> on average. Focus matters!
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Detailed Insights Section */}
-      <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">How to Win Your Next Exam</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="space-y-3">
-            <h3 className="font-semibold text-gray-800">Identify Weak Spots</h3>
-            <p className="text-sm text-gray-500">Your performance in <span className="font-bold">Computer Networks</span> has dipped. The AI suggests a 15-minute recap session today.</p>
-          </div>
-          <div className="space-y-3">
-            <h3 className="font-semibold text-gray-800">Optimal Study Time</h3>
-            <p className="text-sm text-gray-500">Analysis shows you score <span className="font-bold text-indigo-600">12% higher</span> during morning sessions (8 AM - 11 AM).</p>
-          </div>
-          <div className="space-y-3">
-            <h3 className="font-semibold text-gray-800">Predicted Readiness</h3>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold text-indigo-600">82%</span>
-              <span className="text-sm text-gray-400 pb-1">Exam Ready</span>
+        {/* ── Momentum Score (hero) ── */}
+        <SECTION delay={0.05} style={{ textAlign:"center" }}>
+          <h2 style={{ color:"#111827", fontSize:18, fontWeight:700, margin:"0 0 4px" }}>Learning Momentum</h2>
+          <p style={{ color:"#6B7280", fontSize:13, margin:"0 0 8px" }}>
+            Your real-time learning health score — not a grade, a momentum indicator.
+          </p>
+          {loading ? (
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16, padding:"24px 0" }}>
+              <SkeletonBlock height={160} width={220} style={{ borderRadius:"50%" }} />
+              <SkeletonBlock height={40}  width={280} />
+              <SkeletonBlock height={30}  width={140} />
             </div>
-            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-              <div className="bg-indigo-500 h-2 w-[82%]"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+          ) : (
+            <MomentumGauge data={momentum} />
+          )}
+        </SECTION>
 
-function InsightCard({ icon, title, value, sub }) {
-  return (
-    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-      <div className="p-2 bg-gray-50 rounded-lg w-fit mb-3">{icon}</div>
-      <p className="text-sm font-medium text-gray-500">{title}</p>
-      <div className="flex items-baseline gap-2 mt-1">
-        <span className="text-2xl font-bold text-gray-900">{value}</span>
-        <span className="text-xs text-indigo-500 font-semibold">{sub}</span>
+        {/* ── Focus Check ── */}
+        <SECTION title="Focus Check" delay={0.12} style={{ marginTop:20 }}>
+          {loading
+            ? <div style={{ display:"flex", flexDirection:"column", gap:10 }}><SkeletonBlock height={70} /><SkeletonBlock height={70} /></div>
+            : <FocusCheck flags={burnout} userId={USER_ID} />}
+        </SECTION>
+
+        {/* ── AI Insight Cards ── */}
+        <SECTION title="Personal Insights" delay={0.18} style={{ marginTop:20 }}>
+          {loading
+            ? <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}><SkeletonBlock height={110}/><SkeletonBlock height={110}/><SkeletonBlock height={110}/></div>
+            : <InsightCards insights={insights} onRefresh={refreshInsights} lastRefreshed={insightMeta.generatedAt} />}
+        </SECTION>
+
+        {/* ── Mastery Tree + Deadline Predictor (2-col on desktop) ── */}
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:"clamp(300px,65%,65%) 1fr",
+          gap:20,
+          marginTop:20
+        }}
+          className="analytics-two-col"
+        >
+          <SECTION title="Topic Mastery Tree" delay={0.25}>
+            {loading
+              ? <SkeletonBlock height={260} />
+              : <TopicMasteryTree topics={mastery} />}
+          </SECTION>
+
+          <SECTION title="Deadline Predictor" delay={0.3}>
+            {loading
+              ? <div style={{ display:"flex", flexDirection:"column", gap:10 }}><SkeletonBlock height={80}/><SkeletonBlock height={80}/><SkeletonBlock height={80}/></div>
+              : <DeadlinePredictor predictions={deadlines} />}
+          </SECTION>
+        </div>
+
+        {/* Responsive 2-col → 1-col */}
+        <style>{`
+          @media (max-width: 1023px) {
+            .analytics-two-col {
+              grid-template-columns: 1fr !important;
+            }
+          }
+          @media (max-width: 767px) {
+            .analytics-two-col > *:first-child {
+              overflow-x: auto;
+            }
+          }
+        `}</style>
       </div>
     </div>
   );

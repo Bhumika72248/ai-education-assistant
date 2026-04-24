@@ -87,3 +87,48 @@ class EngagementRequest(SQLModel):
     user_id: int
     engagement_score: float
     emotion: str
+
+class MomentumScore(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="user.id")
+    score: float
+    submission_pace_score: float
+    time_trend_score: float
+    consistency_score: float
+    direction: str
+    computed_at: datetime = Field(default_factory=datetime.utcnow)
+
+class TopicMastery(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="user.id")
+    topic_id: str
+    mastery_percent: float
+    tier: str
+    last_activity_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class BurnoutFlag(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="user.id")
+    topic_id: str
+    flag_type: str
+    dismissed_until: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class DeadlinePrediction(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="user.id")
+    assignment_id: int = Field(foreign_key="assignment.id")
+    prediction: str
+    start_by_date: str
+    reasoning_text: str
+    computed_at: datetime = Field(default_factory=datetime.utcnow)
+
+class AnalyticsInsight(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="user.id")
+    insight_1: str
+    insight_2: str
+    insight_3: str
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+

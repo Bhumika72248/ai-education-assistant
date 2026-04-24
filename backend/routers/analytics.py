@@ -153,3 +153,35 @@ async def engagement_correlation(user_id: int, session: Session = Depends(get_se
     
     return correlation_data
 
+from services.analytics_service import (
+    get_momentum_score,
+    get_topic_mastery,
+    get_burnout_flags,
+    get_deadline_predictions,
+    generate_ai_insights
+)
+
+@router.get("/momentum")
+async def momentum(user_id: int = 1, session: Session = Depends(get_session)):
+    return get_momentum_score(session, user_id)
+
+@router.get("/mastery")
+async def mastery(user_id: int = 1, session: Session = Depends(get_session)):
+    return get_topic_mastery(session, user_id)
+
+@router.get("/burnout-flags")
+async def burnout_flags(user_id: int = 1, session: Session = Depends(get_session)):
+    return get_burnout_flags(session, user_id)
+
+@router.post("/burnout-flags/{topic_id}/dismiss")
+async def dismiss_burnout_flag(topic_id: str, user_id: int = 1, session: Session = Depends(get_session)):
+    # Mocking dismiss functionality
+    return {"message": "Flag dismissed for 48 hours"}
+
+@router.get("/deadline-predictions")
+async def deadline_predictions(user_id: int = 1, session: Session = Depends(get_session)):
+    return get_deadline_predictions(session, user_id)
+
+@router.get("/insights")
+async def insights(user_id: int = 1, session: Session = Depends(get_session)):
+    return generate_ai_insights(session, user_id)
