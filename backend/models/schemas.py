@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime
 
 class User(SQLModel, table=True):
@@ -44,6 +44,22 @@ class QuizRequest(SQLModel):
     topic: str
     num_questions: int = 5
     difficulty: str = "medium"
+    adaptive: bool = False
+
+class YouTubeQuizRequest(SQLModel):
+    url: str
+
+class ExamQuizRequest(SQLModel):
+    exam: str
+    section: str
+    num_questions: int = 5
+
+class QuizAttemptCreate(SQLModel):
+    user_id: Optional[int] = None
+    topic: str
+    score: float
+    total: int
+    questions_json: str
 
 class AssignmentRequest(SQLModel):
     title: str
@@ -54,6 +70,7 @@ class QuizSubmission(SQLModel):
     user_id: Optional[int] = None
     topic: str
     answers: dict
+    questions: list[dict[str, Any]]
 
 class AssignmentSubmission(SQLModel):
     user_id: Optional[int] = None
