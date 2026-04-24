@@ -12,6 +12,7 @@ const QUICK_LINKS = [
   { to: "/student", icon: "📄", label: "Notes PDF", sub: "Export & print", color: "#f0fdf4", border: "#22c55e" },
   { to: "/chat",    icon: "💬", label: "AI Tutor",  sub: "Ask anything",   color: "var(--accent-light)", border: "var(--accent)" },
   { to: "/quiz",    icon: "🎯", label: "Quiz",      sub: "Test knowledge", color: "#fef2f2", border: "#ef4444" },
+  { to: "/analytics",icon: "📈", label: "Analytics",  sub: "AI Insights",    color: "#e0e7ff", border: "#6366f1" },
 ];
 
 export default function Dashboard() {

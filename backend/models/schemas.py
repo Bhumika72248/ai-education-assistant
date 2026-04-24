@@ -76,4 +76,14 @@ class AssignmentSubmission(SQLModel):
     title: str
     student_answer: str
 
+class EngagementLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    engagement_score: float  # 0.0 to 1.0
+    emotion: str  # "focused", "distracted", "neutral", etc.
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
+class EngagementRequest(SQLModel):
+    user_id: int
+    engagement_score: float
+    emotion: str
