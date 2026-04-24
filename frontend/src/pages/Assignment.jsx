@@ -28,10 +28,8 @@ export default function Assignment() {
 			setError("Please fill in title and answer before evaluating.");
 			return;
 		}
-
 		setLoading(true);
 		setError("");
-
 		try {
 			const response = await api.post("/assignment/evaluate", {
 				title: title.trim(),
@@ -107,7 +105,6 @@ export default function Assignment() {
 			{result && (
 				<div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
 					<h2 className="text-lg font-semibold text-gray-800">Evaluation Result</h2>
-
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 						<div className="rounded-lg bg-gray-50 p-3">
 							<div className="text-xs text-gray-500">Score</div>
@@ -126,18 +123,14 @@ export default function Assignment() {
 					<div>
 						<h3 className="text-sm font-semibold text-gray-700 mb-2">Strengths</h3>
 						<ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
-							{(result.strengths || []).map((item, idx) => (
-								<li key={`s-${idx}`}>{item}</li>
-							))}
+							{(result.strengths || []).map((item, idx) => <li key={`s-${idx}`}>{item}</li>)}
 						</ul>
 					</div>
 
 					<div>
 						<h3 className="text-sm font-semibold text-gray-700 mb-2">Improvements</h3>
 						<ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
-							{(result.improvements || []).map((item, idx) => (
-								<li key={`i-${idx}`}>{item}</li>
-							))}
+							{(result.improvements || []).map((item, idx) => <li key={`i-${idx}`}>{item}</li>)}
 						</ul>
 					</div>
 

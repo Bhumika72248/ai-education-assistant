@@ -19,11 +19,9 @@ export default function Notes() {
 			setError("Please enter a topic first.");
 			return;
 		}
-
 		setLoading(true);
 		setError("");
 		setNotes("");
-
 		try {
 			const baseURL = api.defaults.baseURL || "";
 			const response = await fetch(`${baseURL}/chat/notes?topic=${encodeURIComponent(trimmedTopic)}`, {
@@ -32,15 +30,12 @@ export default function Notes() {
 					Authorization: localStorage.getItem("token") ? `Bearer ${localStorage.getItem("token")}` : "",
 				},
 			});
-
 			if (!response.ok || !response.body) {
 				throw new Error("Failed to generate notes.");
 			}
-
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder("utf-8");
 			let done = false;
-
 			while (!done) {
 				const { value, done: doneReading } = await reader.read();
 				done = doneReading;
@@ -58,13 +53,11 @@ export default function Notes() {
 
 	async function downloadPdf() {
 		if (!notesRef.current || !hasNotes) return;
-
 		const canvas = await html2canvas(notesRef.current, {
 			scale: 2,
 			useCORS: true,
 			backgroundColor: "#ffffff",
 		});
-
 		const imgData = canvas.toDataURL("image/png");
 		const pdf = new jsPDF("p", "mm", "a4");
 		const pageWidth = pdf.internal.pageSize.getWidth();
@@ -72,7 +65,6 @@ export default function Notes() {
 		const margin = 10;
 		const usableWidth = pageWidth - margin * 2;
 		const imgHeight = (canvas.height * usableWidth) / canvas.width;
-
 		let renderedHeight = 0;
 		let page = 0;
 		while (renderedHeight < imgHeight) {
@@ -82,7 +74,6 @@ export default function Notes() {
 			renderedHeight += pageHeight - margin * 2;
 			page += 1;
 		}
-
 		const safeTopic = topic.trim().replace(/\s+/g, "-").toLowerCase() || "study-notes";
 		pdf.save(`${safeTopic}-notes.pdf`);
 	}
@@ -126,7 +117,6 @@ export default function Notes() {
 				{!hasNotes && !loading ? (
 					<p className="text-sm text-gray-500">Generated notes will appear here.</p>
 				) : null}
-
 				<div ref={notesRef} className="prose max-w-none prose-headings:text-gray-800 prose-p:text-gray-700">
 					<ReactMarkdown>{notes}</ReactMarkdown>
 				</div>

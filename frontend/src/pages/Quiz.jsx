@@ -131,7 +131,6 @@ export default function Quiz() {
   const handleNext = (isCorrect) => {
     const newScore = isCorrect ? score + 1 : score;
     if (isCorrect) setScore(newScore);
-    
     if (currentIndex < quiz.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
@@ -180,11 +179,7 @@ export default function Quiz() {
     const percentage = Math.round((score / quiz.length) * 100);
     return (
       <div className="fade-in" style={{ maxWidth: 600, margin: "0 auto" }}>
-        <div 
-          ref={resultRef}
-          className="card"
-          style={{ marginBottom: 24, padding: "32px", position: "relative", overflow: "hidden" }}
-        >
+        <div ref={resultRef} className="card" style={{ marginBottom: 24, padding: "32px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 6, background: "var(--accent)" }}></div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
             <div>
@@ -251,7 +246,6 @@ export default function Quiz() {
   if (quiz && currentIndex < quiz.length) {
     return (
       <div className="fade-in" style={{ maxWidth: 600, margin: "0 auto" }}>
-        {/* Progress Bar */}
         <div style={{ width: "100%", background: "var(--border)", borderRadius: 10, height: 6, marginBottom: 24, overflow: "hidden" }}>
           <div style={{ background: "var(--accent)", height: 6, width: `${((currentIndex) / quiz.length) * 100}%`, transition: "width 0.3s ease" }}></div>
         </div>
@@ -272,28 +266,9 @@ export default function Quiz() {
         <p style={{ margin: 0, color: "var(--text-secondary)" }}>Generate adaptive quizzes, test knowledge from YouTube, or prep for exams.</p>
       </div>
 
-      {/* Tab bar */}
-      <div style={{
-        display: "flex", gap: 6, flexWrap: "wrap",
-        marginBottom: 20, padding: "4px",
-        background: "var(--surface)", borderRadius: 12,
-        border: "1px solid var(--border)",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.04)"
-      }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20, padding: "4px", background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
         {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => handleTabChange(t.id)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "8px 14px", borderRadius: 9, border: "none",
-              cursor: "pointer", fontSize: 13, fontWeight: 500,
-              fontFamily: "Inter, sans-serif",
-              transition: "all 0.15s ease",
-              background: activeTab === t.id ? "var(--accent)" : "transparent",
-              color: activeTab === t.id ? "white" : "var(--text-secondary)",
-            }}
-          >
+          <button key={t.id} onClick={() => handleTabChange(t.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "Inter, sans-serif", transition: "all 0.15s ease", background: activeTab === t.id ? "var(--accent)" : "transparent", color: activeTab === t.id ? "white" : "var(--text-secondary)" }}>
             <span>{t.icon}</span>
             <span>{t.label}</span>
           </button>
@@ -311,17 +286,10 @@ export default function Quiz() {
           <div className="fade-in">
             <h2 className="section-title">Topic Quiz</h2>
             <p className="section-sub">Enter any topic and let AI generate a custom quiz for you.</p>
-            
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Topic</label>
-              <input
-                style={inputStyle}
-                placeholder="e.g. Data Structures, React, World History..."
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-              />
+              <input style={inputStyle} placeholder="e.g. Data Structures, React, World History..." value={topic} onChange={(e) => setTopic(e.target.value)} />
             </div>
-            
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={labelStyle}>Questions</label>
@@ -340,14 +308,12 @@ export default function Quiz() {
                 </select>
               </div>
             </div>
-            
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, background: "var(--bg)", borderRadius: 8, marginBottom: 24, border: "1px solid var(--border)" }}>
               <input type="checkbox" id="adaptive" checked={adaptive} onChange={(e) => setAdaptive(e.target.checked)} style={{ cursor: "pointer" }} />
               <label htmlFor="adaptive" style={{ fontSize: 14, fontWeight: 500, cursor: "pointer", color: "var(--text-primary)" }}>
                 Adaptive Mode <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>(Increases difficulty automatically)</span>
               </label>
             </div>
-            
             <button className="btn-primary" onClick={() => generateTopicQuiz()} style={{ width: "100%", padding: 12 }}>
               Generate Topic Quiz
             </button>
@@ -358,18 +324,11 @@ export default function Quiz() {
           <div className="fade-in">
             <h2 className="section-title">YouTube Quiz</h2>
             <p className="section-sub">Paste a YouTube link and generate questions based on its transcript.</p>
-            
             <div style={{ marginBottom: 24 }}>
               <label style={labelStyle}>YouTube Video URL</label>
-              <input
-                style={inputStyle}
-                placeholder="https://youtube.com/watch?v=..."
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-              />
+              <input style={inputStyle} placeholder="https://youtube.com/watch?v=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} />
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>Video must have captions/subtitles enabled.</p>
             </div>
-            
             <button className="btn-primary" onClick={generateYoutubeQuiz} style={{ width: "100%", padding: 12, background: "#ef4444" }}>
               ▶ Generate Video Quiz
             </button>
@@ -380,7 +339,6 @@ export default function Quiz() {
           <div className="fade-in">
             <h2 className="section-title">Exam Prep</h2>
             <p className="section-sub">Simulate the pattern of real competitive exams.</p>
-            
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={labelStyle}>Exam</label>
@@ -403,16 +361,14 @@ export default function Quiz() {
                 </select>
               </div>
             </div>
-            
             <div style={{ marginBottom: 24 }}>
-                <label style={labelStyle}>Questions</label>
-                <select style={inputStyle} value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))}>
-                  <option value={5}>5 Questions</option>
-                  <option value={10}>10 Questions</option>
-                  <option value={15}>15 Questions</option>
-                </select>
+              <label style={labelStyle}>Questions</label>
+              <select style={inputStyle} value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value))}>
+                <option value={5}>5 Questions</option>
+                <option value={10}>10 Questions</option>
+                <option value={15}>15 Questions</option>
+              </select>
             </div>
-            
             <button className="btn-primary" onClick={generateExamQuiz} style={{ width: "100%", padding: 12, background: "var(--text-primary)" }}>
               🎓 Simulate Exam
             </button>
