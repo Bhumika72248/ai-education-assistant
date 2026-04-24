@@ -1,6 +1,6 @@
 import os
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
@@ -30,13 +30,13 @@ DEFAULT_RUBRIC = "Evaluate based on accuracy, clarity, completeness, and logical
 
 
 def evaluate_assignment(title: str, student_answer: str, rubric: str = None) -> dict:
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is missing in backend/.env")
+        raise RuntimeError("GROQ_API_KEY is missing in backend/.env")
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=api_key,
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        groq_api_key=api_key,
         temperature=0.2,
     )
     chain = EVAL_PROMPT | llm

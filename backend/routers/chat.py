@@ -7,7 +7,7 @@ from db import get_session
 from models.schemas import ChatRequest, ChatMessage
 from agents.tutor_agent import get_tutor_chain
 from rag.ingest import ingest_document
-from langchain_google_genai import ChatGoogleGenerativeAI  # noqa
+from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -64,9 +64,9 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @router.post("/notes")
 async def generate_notes(topic: str):
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        groq_api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.4,
     )
     prompt = f"""Generate comprehensive study notes on: "{topic}"
