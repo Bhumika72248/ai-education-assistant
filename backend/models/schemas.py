@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime
 
 class User(SQLModel, table=True):
@@ -70,6 +70,7 @@ class QuizSubmission(SQLModel):
     user_id: Optional[int] = None
     topic: str
     answers: dict
+    questions: list[dict[str, Any]]
 
 class AssignmentSubmission(SQLModel):
     user_id: Optional[int] = None
@@ -131,4 +132,18 @@ class AnalyticsInsight(SQLModel, table=True):
     insight_2: str
     insight_3: str
     generated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CourseMaterial(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    file_url: str
+    uploaded_by: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class AssignedTopic(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    topic: str
+    assigned_by: int = Field(foreign_key="user.id")
+    assigned_to: str = "all_students"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 

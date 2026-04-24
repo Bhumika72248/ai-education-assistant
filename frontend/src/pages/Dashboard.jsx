@@ -34,6 +34,15 @@ export default function Dashboard() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const name = localStorage.getItem("name") || "Student";
+
+  const [assignedTopics, setAssignedTopics] = useState([]);
+  const [materials, setMaterials] = useState([]);
+
+  useEffect(() => {
+    api.get("/quiz/assigned").then((r) => setAssignedTopics(r.data.assigned_topics || [])).catch(() => {});
+    api.get("/materials").then((r) => setMaterials(r.data.materials || [])).catch(() => {});
+  }, []);
 
   const handleQuick5 = async () => {
     setLoadingQuick5(true);
@@ -55,7 +64,7 @@ export default function Dashboard() {
       <div className="card" style={{ marginBottom: 20, background: "linear-gradient(to right, var(--accent-light), #e0e7ff)", border: "1px solid #c7d2fe", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 6px", color: "var(--accent)" }}>
-            {greeting}, Priya 👋
+            {greeting}, {name} 👋
           </h1>
           <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 15 }}>
             Ready to study? You have 3 upcoming events this week.
@@ -118,7 +127,6 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-
       {/* Personalized weekly plan */}
       <div className="card" style={{ marginTop: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -170,6 +178,56 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Assigned Topics from Teacher */}
+      {assignedTopics.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>🎯 Assigned Quiz Topics</h2>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {assignedTopics.map((t) => (
+              <Link key={t.id} to="/quiz" style={{ textDecoration: "none" }}>
+                <span style={{
+                  padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 500,
+                  background: "var(--accent-light)", color: "var(--accent)",
+                  border: "1px solid #c7d2fe", cursor: "pointer"
+                }}>
+                  {t.topic}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Course Materials from Teacher */}
+      {materials.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>📚 Course Materials</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+            {materials.map((m) => (
+              <a
+                key={m.id}
+                href={`http://localhost:8000${m.file_url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <div style={{
+                  background: "#f0fdf4", borderRadius: 12, padding: "16px",
+                  border: "1px solid #22c55e33", transition: "all 0.15s"
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.08)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>📄</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>{m.title}</div>
+                  <div style={{ fontSize: 11, color: "#22c55e" }}>Click to view PDF</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
