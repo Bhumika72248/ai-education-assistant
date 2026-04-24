@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 @router.get("/me")
-async def my_analytics(user_id: int, session: Session = Depends(get_session)):
+async def my_analytics(user_id: int = 1, session: Session = Depends(get_session)):
     attempts = session.exec(
         select(QuizAttempt).where(QuizAttempt.user_id == user_id)
     ).all()
@@ -28,7 +28,10 @@ async def my_analytics(user_id: int, session: Session = Depends(get_session)):
     weak = [t for t, s in zip(topics, avg_per_topic) if s < 70]
 
     history_summary = "; ".join(f"{t}: {s}%" for t, s in zip(topics, avg_per_topic))
-    learning_path = generate_learning_path(history_summary, strong, weak, overall_avg)
+    try:
+        learning_path = generate_learning_path(history_summary, strong, weak, overall_avg)
+    except Exception:
+        learning_path = None
 
     sorted_attempts = sorted(attempts, key=lambda a: a.created_at)
 

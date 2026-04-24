@@ -65,11 +65,9 @@ export default function QuizCard({ question, index, total, onNext }) {
                 display: "flex", alignItems: "center", gap: 12,
                 padding: "14px 16px", borderRadius: 10,
                 border: `1px solid ${borderColor}`,
-                background: bg,
-                color: color,
+                background: bg, color: color,
                 cursor: selected === null ? "pointer" : "default",
-                textAlign: "left",
-                fontSize: 15,
+                textAlign: "left", fontSize: 15,
                 transition: "all 0.15s ease"
               }}
               onMouseEnter={e => { if (selected === null) e.currentTarget.style.background = "var(--accent-light)"; }}

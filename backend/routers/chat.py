@@ -7,7 +7,7 @@ from db import get_session
 from models.schemas import ChatRequest, ChatMessage
 from agents.tutor_agent import get_tutor_chain
 from rag.ingest import ingest_document
-from langchain_google_genai import ChatGoogleGenerativeAI  # noqa
+from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,13 +19,34 @@ router = APIRouter()
 async def ask_question(req: ChatRequest, session: Session = Depends(get_session)):
     chain = get_tutor_chain()
 
-    full_response = []
+    full_response_chunks = []
 
     def token_stream():
-        for chunk in chain.stream({"query": req.message}):
-            if "result" in chunk:
-                full_response.append(chunk["result"])
-                yield chunk["result"]
+        for chunk in chain.stream(req.message):
+            if not chunk:
+                continue
+            text = str(chunk)
+            full_response_chunks.append(text)
+            yield text
+
+        # Persist chat transcript for /chat/history support.
+        assistant_reply = "".join(full_response_chunks).strip()
+        user_message = ChatMessage(
+            user_id=1,
+            role="user",
+            content=req.message,
+            session_id=req.session_id,
+        )
+        session.add(user_message)
+        if assistant_reply:
+            assistant_message = ChatMessage(
+                user_id=1,
+                role="assistant",
+                content=assistant_reply,
+                session_id=req.session_id,
+            )
+            session.add(assistant_message)
+        session.commit()
 
     return StreamingResponse(token_stream(), media_type="text/event-stream")
 
@@ -43,9 +64,9 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @router.post("/notes")
 async def generate_notes(topic: str):
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=os.getenv("GEMINI_API_KEY"),
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        groq_api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.4,
     )
     prompt = f"""Generate comprehensive study notes on: "{topic}"
@@ -72,6 +93,8 @@ Use clear headings, bullet points, and simple language. Be thorough."""
 @router.get("/history/{session_id}")
 async def get_history(session_id: str, session: Session = Depends(get_session)):
     messages = session.exec(
-        select(ChatMessage).where(ChatMessage.session_id == session_id)
+        select(ChatMessage)
+        .where(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at)
     ).all()
     return {"history": [{"role": m.role, "content": m.content} for m in messages]}
