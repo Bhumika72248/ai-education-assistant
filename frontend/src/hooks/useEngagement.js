@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { FaceMesh } from "@mediapipe/face_mesh";
-import { Camera } from "@mediapipe/camera_utils";
 
 export function useEngagement(enabled = false) {
   const videoRef = useRef(null);
-  const [status, setStatus] = useState("active"); // "active" | "distracted" | "confused"
+  const [status, setStatus] = useState("active");
   const [score, setScore] = useState(100);
   const [error, setError] = useState("");
 
@@ -14,6 +12,15 @@ export function useEngagement(enabled = false) {
     let camera;
     let mounted = true;
     setError("");
+
+    // mediapipe must be loaded via CDN scripts, not ES imports
+    const FaceMesh = window.FaceMesh;
+    const Camera = window.Camera;
+
+    if (!FaceMesh || !Camera) {
+      setError("Engagement tracking unavailable.");
+      return;
+    }
 
     const faceMesh = new FaceMesh({
       locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
@@ -28,7 +35,6 @@ export function useEngagement(enabled = false) {
         setScore((s) => Math.max(0, s - 2));
         return;
       }
-      // Simple gaze estimation: check if nose tip is roughly centered
       const nose = results.multiFaceLandmarks[0][1];
       const centered = nose.x > 0.3 && nose.x < 0.7 && nose.y > 0.2 && nose.y < 0.8;
       setStatus(centered ? "active" : "distracted");
@@ -40,9 +46,7 @@ export function useEngagement(enabled = false) {
       width: 320, height: 240,
     });
     camera.start().catch(() => {
-      if (mounted) {
-        setError("Camera access was denied or is unavailable.");
-      }
+      if (mounted) setError("Camera access was denied or is unavailable.");
     });
 
     return () => {

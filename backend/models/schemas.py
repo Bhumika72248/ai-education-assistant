@@ -77,4 +77,18 @@ class AssignmentSubmission(SQLModel):
     title: str
     student_answer: str
 
+class CourseMaterial(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    file_url: str
+    uploaded_by: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class AssignedTopic(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    topic: str
+    assigned_by: int = Field(foreign_key="user.id")
+    assigned_to: str = "all_students"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 
