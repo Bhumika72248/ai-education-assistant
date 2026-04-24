@@ -1,13 +1,62 @@
-from fastapi import APIRouter
-from agents.quiz_agent import generate_quiz, evaluate_quiz
-from models.schemas import QuizSubmission
+import json
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from db import get_session
+from models.schemas import QuizRequest, QuizAttempt
+from agents.quiz_agent import generate_quiz
 
 router = APIRouter()
 
+
 @router.post("/generate")
-async def generate(topic: str, num_questions: int = 5):
-    return {"quiz": await generate_quiz(topic, num_questions)}
+async def generate(req: QuizRequest):
+    try:
+        quiz_data = generate_quiz(req.topic, req.num_questions, req.difficulty)
+        questions = quiz_data.get("questions", [])
+        return {"quiz": questions}
+    except Exception as e:
+        import traceback
+        error_detail = f"Failed to generate quiz: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
+
 
 @router.post("/submit")
-async def submit(submission: QuizSubmission):
-    return {"result": await evaluate_quiz(submission)}
+async def submit(
+    topic: str,
+    user_id: int,
+    answers: dict,
+    questions_json: str,
+    session: Session = Depends(get_session)
+):
+    questions = json.loads(questions_json)
+    correct = sum(
+        1 for q in questions
+        if answers.get(str(q["id"]), "").upper() == q["correct"].upper()
+    )
+    total = len(questions)
+    score = round((correct / total) * 100, 1) if total else 0
+
+    attempt = QuizAttempt(
+        user_id=user_id,
+        topic=topic,
+        score=score,
+        total=total,
+        questions_json=questions_json,
+    )
+    session.add(attempt)
+    session.commit()
+    session.refresh(attempt)
+
+    return {"score": score, "correct": correct, "total": total, "attempt_id": attempt.id}
+
+
+@router.get("/history")
+async def history(user_id: int, session: Session = Depends(get_session)):
+    attempts = session.exec(
+        select(QuizAttempt).where(QuizAttempt.user_id == user_id)
+    ).all()
+    return {"history": [
+        {"id": a.id, "topic": a.topic, "score": a.score, "total": a.total, "created_at": a.created_at}
+        for a in attempts
+    ]}
