@@ -1,7 +1,8 @@
-import { useRef, useEffect } from "react";
-import { useState } from "react";
+import { useRef, useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import useChat from "../hooks/useChat";
 import VoiceButton from "./VoiceButton";
+import { BotIcon, MessageIcon } from "./ui/Icon";
 
 export default function ChatWindow({ studentId }) {
   const { messages, send, loading } = useChat(studentId);
@@ -20,31 +21,196 @@ export default function ChatWindow({ studentId }) {
   }
 
   return (
-    <div className="flex flex-col h-[600px] border rounded">
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messages.map((m, i) => (
-          <div key={i} className={`p-2 rounded max-w-[75%] ${m.role === "user" ? "ml-auto bg-blue-100" : "bg-gray-100"}`}>
-            {m.content}
+    <div style={{
+      display: "flex", flexDirection: "column",
+      height: "72vh", minHeight: 520, borderRadius: 24, overflow: "hidden",
+      border: "1px solid rgba(110,72,170,0.12)",
+      background: "rgba(255,255,255,0.85)",
+      backdropFilter: "blur(20px)",
+      boxShadow: "0 8px 40px rgba(110,72,170,0.1), inset 0 1px 0 rgba(255,255,255,0.9)",
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: "16px 20px",
+        borderBottom: "1px solid rgba(110,72,170,0.08)",
+        background: "rgba(248,249,255,0.9)",
+        display: "flex", alignItems: "center", gap: 12,
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 12,
+          background: "linear-gradient(135deg, #6E48AA, #9D50BB)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 18, boxShadow: "0 4px 12px rgba(110,72,170,0.3)", color: '#fff'
+        }}><BotIcon size={18} /></div>
+        <div>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1A0B42" }}>EduAI Tutor</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+            <div style={{
+              width: 7, height: 7, borderRadius: "50%",
+              background: "#059669", boxShadow: "0 0 8px rgba(5,150,105,0.5)",
+              animation: "cyanPulse 2s infinite",
+            }} />
+            <span style={{ fontSize: 11, color: "#059669", fontWeight: 500 }}>Online · RAG-powered</span>
           </div>
-        ))}
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div style={{
+        flex: 1, overflowY: "auto", padding: "20px",
+        display: "flex", flexDirection: "column", gap: 14,
+        background: "rgba(248,249,255,0.5)",
+      }}>
+        {messages.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              height: "100%", gap: 16, textAlign: "center",
+            }}
+          >
+            <div style={{
+              width: 64, height: 64, borderRadius: 20,
+              background: "linear-gradient(135deg, rgba(110,72,170,0.12), rgba(0,153,204,0.08))",
+              border: "1px solid rgba(110,72,170,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 30, animation: "float 3s ease-in-out infinite",
+            }}><MessageIcon size={30} /></div>
+            <div>
+              <p style={{ fontSize: 16, fontWeight: 700, color: "#1A0B42", margin: "0 0 6px" }}>
+                Start a conversation
+              </p>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
+                Ask anything — type or use the microphone
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 8 }}>
+              {["Explain photosynthesis", "Solve quadratic equations", "What is Newton's 3rd law?"].map(s => (
+                <motion.button
+                  key={s} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => submitMessage(s)}
+                  style={{
+                    padding: "7px 14px", borderRadius: 20,
+                    background: "rgba(110,72,170,0.08)",
+                    border: "1px solid rgba(110,72,170,0.18)",
+                    color: "#6E48AA", fontSize: 12, fontWeight: 500,
+                    cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                  }}
+                >{s}</motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        <AnimatePresence initial={false}>
+          {messages.map((m, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                display: "flex",
+                justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+                alignItems: "flex-end", gap: 8,
+              }}
+            >
+                {m.role === "assistant" && (
+                <div style={{
+                  width: 28, height: 28, borderRadius: 9, flexShrink: 0,
+                  background: "linear-gradient(135deg, #6E48AA, #9D50BB)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 14, color: '#fff'
+                }}><BotIcon size={14} /></div>
+              )}
+              <div style={{
+                maxWidth: "78%", padding: "12px 16px",
+                fontSize: 14, lineHeight: 1.65,
+                ...(m.role === "user"
+                  ? {
+                      background: "linear-gradient(135deg, #6E48AA, #9D50BB)",
+                      color: "#FFFFFF",
+                      borderRadius: "18px 18px 4px 18px",
+                      boxShadow: "0 4px 20px rgba(110,72,170,0.3)",
+                    }
+                  : {
+                      background: "rgba(255,255,255,0.95)",
+                      border: "1px solid rgba(110,72,170,0.1)",
+                      color: "#1A0B42",
+                      borderRadius: "18px 18px 18px 4px",
+                      boxShadow: "0 2px 8px rgba(110,72,170,0.06)",
+                    }
+                ),
+              }}>
+                {m.content || (m.role === "assistant" ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)" }}>
+                    <span style={{ display: "flex", gap: 3 }}>
+                      {[0, 1, 2].map(j => (
+                        <motion.span
+                          key={j}
+                          animate={{ y: [0, -4, 0] }}
+                          transition={{ duration: 0.6, delay: j * 0.15, repeat: Infinity }}
+                          style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#6E48AA" }}
+                        />
+                      ))}
+                    </span>
+                    Thinking...
+                  </span>
+                ) : "")}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
         <div ref={bottomRef} />
       </div>
-      <div className="flex gap-2 p-2 border-t">
+
+      {/* Input bar */}
+      <div style={{
+        padding: "14px 16px",
+        borderTop: "1px solid rgba(110,72,170,0.08)",
+        background: "rgba(248,249,255,0.9)",
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
         <VoiceButton onTranscript={submitMessage} />
         <input
-          className="flex-1 border rounded p-2"
-          placeholder="Ask something..."
+          style={{
+            flex: 1, padding: "11px 16px", borderRadius: 14,
+            border: "1px solid rgba(110,72,170,0.15)",
+            background: "rgba(255,255,255,0.9)",
+            color: "#1A0B42", fontSize: 14,
+            fontFamily: "'Inter', sans-serif", outline: "none",
+            transition: "all 0.2s ease",
+          }}
+          placeholder="Ask anything..."
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitMessage(input)}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && submitMessage(input)}
+          onFocus={e => {
+            e.target.style.borderColor = "rgba(110,72,170,0.45)";
+            e.target.style.boxShadow = "0 0 0 3px rgba(110,72,170,0.1)";
+          }}
+          onBlur={e => {
+            e.target.style.borderColor = "rgba(110,72,170,0.15)";
+            e.target.style.boxShadow = "none";
+          }}
         />
-        <button
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+        <motion.button
+          whileHover={!loading ? { scale: 1.05, y: -2 } : {}}
+          whileTap={!loading ? { scale: 0.95 } : {}}
           disabled={loading}
           onClick={() => submitMessage(input)}
-        >
-          Send
-        </button>
+          style={{
+            padding: "11px 20px", borderRadius: 14, border: "none",
+            background: loading ? "rgba(110,72,170,0.3)" : "linear-gradient(135deg, #6E48AA, #9D50BB)",
+            color: "#FFFFFF", fontSize: 13, fontWeight: 700,
+            cursor: loading ? "not-allowed" : "pointer",
+            fontFamily: "'Inter', sans-serif",
+            boxShadow: loading ? "none" : "0 4px 16px rgba(110,72,170,0.35)",
+            transition: "all 0.2s ease", whiteSpace: "nowrap",
+          }}
+        >{loading ? "..." : "Send →"}</motion.button>
       </div>
     </div>
   );

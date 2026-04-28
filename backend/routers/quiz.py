@@ -30,7 +30,8 @@ async def from_youtube(request: YouTubeQuizRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error processing YouTube video")
+        # Return the exception message to aid debugging (will show transcript/API errors)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/exam-prep")
 async def exam_prep(request: ExamQuizRequest):

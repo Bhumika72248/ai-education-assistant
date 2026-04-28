@@ -5,6 +5,7 @@ import google.generativeai as genai
 from models.schemas import QuizSubmission
 from youtube_transcript_api import YouTubeTranscriptApi
 from dotenv import load_dotenv
+from urllib.parse import urlparse, parse_qs
 
 load_dotenv()
 
@@ -102,17 +103,54 @@ JSON array:"""
         return MOCK_QUIZ[:num_questions]
 
 async def generate_youtube_quiz(url: str) -> list:
-    video_id_match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
-    if not video_id_match:
-        raise ValueError("Invalid YouTube URL")
-    
-    video_id = video_id_match.group(1)
-    
+    # Robustly extract video id from multiple YouTube URL formats
+    parsed = urlparse(url)
+    video_id = None
+    # Example: https://www.youtube.com/watch?v=VIDEOID
+    if parsed.hostname and ("youtube.com" in parsed.hostname):
+        qs = parse_qs(parsed.query)
+        vid_list = qs.get("v")
+        if vid_list:
+            video_id = vid_list[0]
+    # Example: https://youtu.be/VIDEOID
+    if not video_id and parsed.hostname and ("youtu.be" in parsed.hostname):
+        video_id = parsed.path.lstrip("/")
+    # Fallback: try regex extraction from the whole URL
+    if not video_id:
+        m = re.search(r"([0-9A-Za-z_-]{11})", url)
+        if m:
+            video_id = m.group(1)
+
+    if not video_id:
+        raise ValueError("Invalid YouTube URL or unable to extract video id")
+
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        transcript = " ".join([t['text'] for t in transcript_list])
-    except Exception:
-        raise ValueError("This video does not have captions enabled. Try another video.")
+        yt = YouTubeTranscriptApi()
+        # Inspect available transcripts and prefer English if present
+        try:
+            tl = yt.list(video_id)
+            available = [t.language_code for t in tl]
+        except Exception:
+            available = []
+
+        chosen_lang = None
+        note = None
+        if "en" in available:
+            chosen_lang = "en"
+        elif available:
+            chosen_lang = available[0]
+            note = f"Transcript available only in '{chosen_lang}'. Using that language."
+
+        if chosen_lang:
+            fetched = yt.fetch(video_id, languages=(chosen_lang,))
+        else:
+            # Try default fetch (may raise the original informative error)
+            fetched = yt.fetch(video_id)
+
+        transcript_list = fetched.to_raw_data()
+        transcript = " ".join([t.get("text", "") for t in transcript_list])
+    except Exception as e:
+        raise ValueError(f"Could not retrieve transcript for video {video_id}: {e}")
 
     transcript = transcript[:4000]
 
@@ -136,13 +174,18 @@ JSON array:"""
     try:
         response = model.generate_content(prompt)
         try:
-            return json.loads(clean_json_response(response.text))
+            quiz = json.loads(clean_json_response(response.text))
         except json.JSONDecodeError:
             response = model.generate_content(prompt)
-            return json.loads(clean_json_response(response.text))
+            quiz = json.loads(clean_json_response(response.text))
     except Exception as e:
         print(f"Fallback to mock quiz due to error: {e}")
         return MOCK_QUIZ[:5]
+
+    # If we used a non-English transcript, include a note for the caller
+    if 'note' in locals() and note:
+        return {"quiz": quiz, "note": note}
+    return quiz
 
 async def generate_exam_quiz(exam: str, section: str, num_questions: int = 5) -> dict:
     model = genai.GenerativeModel(MODEL_NAME)
