@@ -1,32 +1,91 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useEngagement } from "../hooks/useEngagement";
 
 export default function EngagementMeter() {
   const [enabled, setEnabled] = useState(false);
   const { videoRef, status, score, error } = useEngagement(enabled);
 
-  const color = status === "active" ? "bg-green-500" : "bg-red-400";
-
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <video ref={videoRef} className="hidden" />
-      <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm text-sm w-40">
-        <div className="text-gray-500 mb-1">Engagement</div>
-        <button
-          type="button"
-          onClick={() => setEnabled((v) => !v)}
-          className={`mb-2 w-full rounded px-2 py-1 text-xs ${enabled ? "bg-red-50 text-red-600 border border-red-200" : "bg-indigo-50 text-indigo-600 border border-indigo-200"}`}
-        >
-          {enabled ? "Stop camera" : "Start camera"}
-        </button>
-        <div className="w-full bg-gray-100 rounded-full h-2 mb-1">
-          <div className={`h-2 rounded-full transition-all ${color}`} style={{ width: `${score}%` }} />
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: 0.5, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      style={{ position: "fixed", bottom: 20, right: 20, zIndex: 50, width: 160 }}
+    >
+      <video ref={videoRef} style={{ display: "none" }} />
+      <div style={{
+        background: "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: "1px solid rgba(110,72,170,0.12)",
+        borderRadius: 16, padding: "14px",
+        boxShadow: "0 8px 32px rgba(110,72,170,0.1)",
+      }}>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Engagement
         </div>
-        <div className={`font-medium capitalize ${status === "active" ? "text-green-600" : "text-red-500"}`}>
+
+        <motion.button
+          type="button"
+          onClick={() => setEnabled(v => !v)}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            width: "100%", padding: "6px 10px", borderRadius: 8,
+            border: "1px solid",
+            borderColor: enabled ? "rgba(220,38,38,0.3)" : "rgba(110,72,170,0.25)",
+            background: enabled ? "rgba(220,38,38,0.06)" : "rgba(110,72,170,0.06)",
+            color: enabled ? "#dc2626" : "#6E48AA",
+            fontSize: 11, fontWeight: 600, cursor: "pointer",
+            fontFamily: "'Inter', sans-serif", marginBottom: 10,
+          }}
+        >
+          {enabled ? "Stop Camera" : "Start Camera"}
+        </motion.button>
+
+        {/* Score bar */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ height: 5, background: "rgba(110,72,170,0.1)", borderRadius: 99, overflow: "hidden" }}>
+            <motion.div
+              animate={{ width: `${score}%` }}
+              transition={{ duration: 0.5 }}
+              style={{
+                height: "100%", borderRadius: 99,
+                background: status === "active"
+                  ? "linear-gradient(90deg, #059669, #10b981)"
+                  : "linear-gradient(90deg, #dc2626, #ef4444)",
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{
+          fontSize: 12, fontWeight: 600, textTransform: "capitalize",
+          color: enabled ? (status === "active" ? "#059669" : "#dc2626") : "var(--text-muted)",
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <div style={{
+            width: 6, height: 6, borderRadius: "50%",
+            background: enabled ? (status === "active" ? "#059669" : "#dc2626") : "var(--text-muted)",
+            boxShadow: enabled && status === "active" ? "0 0 6px rgba(5,150,105,0.5)" : "none",
+          }} />
           {enabled ? status : "paused"}
         </div>
-        {error ? <div className="text-[11px] text-red-500 mt-1">{error}</div> : null}
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              style={{ fontSize: 10, color: "#dc2626", marginTop: 6, lineHeight: 1.4 }}
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

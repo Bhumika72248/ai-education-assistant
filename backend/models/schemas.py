@@ -44,6 +44,7 @@ class QuizRequest(SQLModel):
     topic: str
     num_questions: int = 5
     difficulty: str = "medium"
+    adaptive: bool = False
 
 class AssignmentRequest(SQLModel):
     title: str
@@ -74,3 +75,41 @@ class AssignedTopic(SQLModel, table=True):
     assigned_by: int = Field(foreign_key="user.id")
     assigned_to: str = "all_students"
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Course(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    category: str
+    level: Optional[str] = None
+    description: Optional[str] = None
+    topics: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CourseEnrollment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    course_id: int = Field(foreign_key="course.id")
+    progress: float = 0.0
+    enrolled_at: datetime = Field(default_factory=datetime.utcnow)
+
+class StudySession(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    topic: str
+    duration_hours: float
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+
+class YouTubeQuizRequest(SQLModel):
+    url: str
+
+class ExamQuizRequest(SQLModel):
+    exam: str
+    section: str
+    num_questions: int = 5
+
+class QuizAttemptCreate(SQLModel):
+    user_id: Optional[int] = None
+    topic: str
+    score: float
+    total: int
+    questions_json: str
