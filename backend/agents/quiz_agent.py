@@ -2,6 +2,7 @@ import os
 import json
 import re
 import google.generativeai as genai
+from models.schemas import QuizSubmission
 from dotenv import load_dotenv
 from urllib.parse import urlparse, parse_qs
 from youtube_transcript_api import YouTubeTranscriptApi
