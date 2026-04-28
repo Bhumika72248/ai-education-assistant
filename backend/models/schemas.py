@@ -147,3 +147,26 @@ class AssignedTopic(SQLModel, table=True):
     assigned_to: str = "all_students"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+
+class Course(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    category: str
+    level: Optional[str] = None
+    description: Optional[str] = None
+    topics: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CourseEnrollment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    course_id: int = Field(foreign_key="course.id")
+    progress: float = 0.0
+    enrolled_at: datetime = Field(default_factory=datetime.utcnow)
+
+class StudySession(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    topic: str
+    duration_hours: float
+    started_at: datetime = Field(default_factory=datetime.utcnow)

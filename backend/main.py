@@ -35,7 +35,9 @@ app.include_router(courses.router, prefix="/courses", tags=["courses"])
 app.include_router(materials.router, prefix="/materials", tags=["materials"])
 
 from fastapi.staticfiles import StaticFiles
-app.mount("/materials/file", StaticFiles(directory=os.getenv("UPLOADS_PATH", "./data/uploads")), name="uploads")
+uploads_path = os.getenv("UPLOADS_PATH", "./data/uploads")
+os.makedirs(uploads_path, exist_ok=True)
+app.mount("/materials/file", StaticFiles(directory=uploads_path), name="uploads")
 
 @app.get("/health")
 def health():

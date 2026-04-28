@@ -40,11 +40,35 @@ def generate_learning_path(history_summary: str, strong: list, weak: list, avg_s
         temperature=0.5,
     )
     chain = PATH_PROMPT | llm
-    result = chain.invoke({
-        "history_summary": history_summary,
-        "strong_topics": ", ".join(strong) or "None identified yet",
-        "weak_topics": ", ".join(weak) or "None identified yet",
-        "avg_score": round(avg_score, 1),
-    })
-    text = result.content.strip().replace("```json", "").replace("```", "")
-    return json.loads(text)
+    try:
+        result = chain.invoke({
+            "history_summary": history_summary,
+            "strong_topics": ", ".join(strong) or "None identified yet",
+            "weak_topics": ", ".join(weak) or "None identified yet",
+            "avg_score": round(avg_score, 1),
+        })
+        text = result.content.strip().replace("```json", "").replace("```", "")
+        return json.loads(text)
+    except Exception as e:
+        # Fallback: create a simple deterministic 7-day plan
+        days = []
+        topics_pool = weak if weak else (strong if strong else [history_summary or "General"])
+        for i in range(7):
+            topic = topics_pool[i % len(topics_pool)]
+            tasks = [
+                f"Review key concepts of {topic}",
+                f"Practice 10 questions on {topic}",
+                f"Watch a short tutorial on {topic}",
+            ]
+            days.append({
+                "day": i + 1,
+                "focus": topic,
+                "tasks": tasks,
+                "estimated_time": "45 mins",
+                "resources": [f"Search: {topic} tutorial", "Article: official docs"],
+            })
+        return {
+            "weekly_goal": f"Focus on: {', '.join(topics_pool[:3])}",
+            "days": days,
+            "note": f"Generated fallback plan due to error: {e}",
+        }
