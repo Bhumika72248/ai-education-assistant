@@ -5,15 +5,6 @@ export default function useChat(studentId) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const speak = useCallback((text) => {
-    if (!text || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-IN";
-    utterance.rate = 1;
-    window.speechSynthesis.speak(utterance);
-  }, []);
-
   const send = useCallback(async (text) => {
     if (!text?.trim()) return;
     const userText = text.trim();
@@ -60,8 +51,6 @@ export default function useChat(studentId) {
           prev.map((m) => (m.id === assistantIndex ? { ...m, content: assistantText } : m))
         );
       }
-
-      speak(assistantText);
     } catch (error) {
       setMessages((prev) =>
         prev.map((m) =>
@@ -71,7 +60,7 @@ export default function useChat(studentId) {
     } finally {
       setLoading(false);
     }
-  }, [speak, studentId]);
+  }, [studentId]);
 
   return { messages, send, loading };
 }
