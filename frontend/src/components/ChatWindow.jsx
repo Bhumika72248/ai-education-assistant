@@ -117,7 +117,7 @@ export default function ChatWindow({ studentId }) {
                 alignItems: "flex-end", gap: 8,
               }}
             >
-                {m.role === "assistant" && (
+              {m.role === "assistant" && (
                 <div style={{
                   width: 28, height: 28, borderRadius: 9, flexShrink: 0,
                   background: "linear-gradient(135deg, #6E48AA, #9D50BB)",

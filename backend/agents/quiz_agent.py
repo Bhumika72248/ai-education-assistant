@@ -2,16 +2,14 @@ import os
 import json
 import re
 import google.generativeai as genai
-from models.schemas import QuizSubmission
-from youtube_transcript_api import YouTubeTranscriptApi
 from dotenv import load_dotenv
 from urllib.parse import urlparse, parse_qs
+from youtube_transcript_api import YouTubeTranscriptApi
 
 load_dotenv()
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Use the latest model as requested in previous conversations
 MODEL_NAME = "gemini-2.0-flash"
 
 MOCK_QUIZ = [
@@ -70,7 +68,6 @@ def clean_json_response(text: str) -> str:
 async def generate_quiz(topic: str, num_questions: int = 5, difficulty: str = "medium", adaptive: bool = False) -> list:
     model = genai.GenerativeModel(MODEL_NAME)
     
-    adaptive_instruction = ""
     if adaptive:
         adaptive_instruction = "Generate questions in order of increasing difficulty from easy to hard. The difficulty_level field should reflect this progression."
     else:
@@ -103,19 +100,15 @@ JSON array:"""
         return MOCK_QUIZ[:num_questions]
 
 async def generate_youtube_quiz(url: str) -> list:
-    # Robustly extract video id from multiple YouTube URL formats
     parsed = urlparse(url)
     video_id = None
-    # Example: https://www.youtube.com/watch?v=VIDEOID
     if parsed.hostname and ("youtube.com" in parsed.hostname):
         qs = parse_qs(parsed.query)
         vid_list = qs.get("v")
         if vid_list:
             video_id = vid_list[0]
-    # Example: https://youtu.be/VIDEOID
     if not video_id and parsed.hostname and ("youtu.be" in parsed.hostname):
         video_id = parsed.path.lstrip("/")
-    # Fallback: try regex extraction from the whole URL
     if not video_id:
         m = re.search(r"([0-9A-Za-z_-]{11})", url)
         if m:
@@ -126,7 +119,6 @@ async def generate_youtube_quiz(url: str) -> list:
 
     try:
         yt = YouTubeTranscriptApi()
-        # Inspect available transcripts and prefer English if present
         try:
             tl = yt.list(video_id)
             available = [t.language_code for t in tl]
@@ -144,7 +136,6 @@ async def generate_youtube_quiz(url: str) -> list:
         if chosen_lang:
             fetched = yt.fetch(video_id, languages=(chosen_lang,))
         else:
-            # Try default fetch (may raise the original informative error)
             fetched = yt.fetch(video_id)
 
         transcript_list = fetched.to_raw_data()
@@ -182,7 +173,6 @@ JSON array:"""
         print(f"Fallback to mock quiz due to error: {e}")
         return MOCK_QUIZ[:5]
 
-    # If we used a non-English transcript, include a note for the caller
     if 'note' in locals() and note:
         return {"quiz": quiz, "note": note}
     return quiz

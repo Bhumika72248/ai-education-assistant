@@ -1,11 +1,11 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel
-from agents.quiz_agent import generate_quiz, generate_youtube_quiz, generate_exam_quiz, evaluate_quiz
-from models.schemas import QuizRequest, YouTubeQuizRequest, ExamQuizRequest, QuizAttemptCreate, QuizAttempt, QuizSubmission, AssignedTopic, User
 from db import get_session
+from models.schemas import QuizRequest, QuizAttempt, QuizSubmission, AssignedTopic, User, YouTubeQuizRequest, ExamQuizRequest, QuizAttemptCreate
+from agents.quiz_agent import generate_quiz, generate_youtube_quiz, generate_exam_quiz, evaluate_quiz
 from routers.auth import get_current_user
-import json
 
 router = APIRouter()
 
@@ -30,7 +30,6 @@ async def from_youtube(request: YouTubeQuizRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        # Return the exception message to aid debugging (will show transcript/API errors)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/exam-prep")
@@ -48,7 +47,6 @@ async def exam_prep(request: ExamQuizRequest):
 @router.post("/save-attempt")
 async def save_attempt(attempt: QuizAttemptCreate, session: Session = Depends(get_session)):
     user_id_to_save = attempt.user_id if attempt.user_id else 1
-    
     db_attempt = QuizAttempt(
         user_id=user_id_to_save,
         topic=attempt.topic,
@@ -66,13 +64,11 @@ async def weakest_topic(session: Session = Depends(get_session)):
     attempts = session.exec(select(QuizAttempt).where(QuizAttempt.user_id == 1)).all()
     if not attempts:
         return {"topic": "General Aptitude"}
-    
     topic_scores = {}
     for a in attempts:
         if a.topic not in topic_scores:
             topic_scores[a.topic] = []
         topic_scores[a.topic].append(a.score / a.total if a.total > 0 else 0)
-        
     avg_scores = {topic: sum(scores)/len(scores) for topic, scores in topic_scores.items()}
     weakest = min(avg_scores, key=avg_scores.get)
     return {"topic": weakest}
@@ -82,7 +78,6 @@ async def submit(req: QuizSubmission, session: Session = Depends(get_session)):
     questions = req.questions
     if not questions:
         raise HTTPException(status_code=400, detail="Questions are required")
-
     correct = sum(
         1 for q in questions
         if str(req.answers.get(str(q.get("id")), "")).upper() == str(q.get("correct", "")).upper()
@@ -90,7 +85,6 @@ async def submit(req: QuizSubmission, session: Session = Depends(get_session)):
     total = len(questions)
     score = round((correct / total) * 100, 1) if total else 0
     questions_json = json.dumps(questions)
-
     attempt = QuizAttempt(
         user_id=req.user_id or 1,
         topic=req.topic,
@@ -101,7 +95,6 @@ async def submit(req: QuizSubmission, session: Session = Depends(get_session)):
     session.add(attempt)
     session.commit()
     session.refresh(attempt)
-
     return {"score": score, "correct": correct, "total": total, "attempt_id": attempt.id}
 
 @router.get("/history")
@@ -114,10 +107,8 @@ async def history(user_id: int, session: Session = Depends(get_session)):
         for a in attempts
     ]}
 
-
 class AssignTopicRequest(BaseModel):
     topic: str
-
 
 @router.post("/assign")
 def assign_topic(
@@ -133,7 +124,6 @@ def assign_topic(
     session.refresh(assigned)
     print(f"[QUIZ] Topic assigned: '{body.topic}' by teacher_id={current_user.id}")
     return {"message": f"Topic '{body.topic}' assigned to all students", "id": assigned.id}
-
 
 @router.get("/assigned")
 def get_assigned_topics(
