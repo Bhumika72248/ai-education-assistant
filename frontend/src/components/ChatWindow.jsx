@@ -8,10 +8,73 @@ export default function ChatWindow({ studentId }) {
   const { messages, send, loading } = useChat(studentId);
   const bottomRef = useRef(null);
   const [input, setInput] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const voiceRef = useRef(null);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        const preferred = voices.find(v => v.name.includes("Microsoft Aria Online")) ||
+          voices.find(v => v.name.includes("Microsoft Guy Online")) ||
+          voices.find(v => v.name.includes("Microsoft Zira")) ||
+          voices.find(v => v.lang === "en-US") || voices[0];
+        voiceRef.current = preferred;
+        setVoicesLoaded(true);
+      }
+    };
+    
+    loadVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  function stopSpeaking() {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }
+
+  function speakText(text) {
+    if (!text || !voicesLoaded) return;
+    
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (voiceRef.current) {
+      utterance.voice = voiceRef.current;
+    }
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    utterance.lang = "en-US";
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = (e) => {
+      console.error("Speech error:", e);
+      setIsSpeaking(false);
+    };
+    
+    window.speechSynthesis.speak(utterance);
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    
+    if (messages.length > 0 && voicesLoaded) {
+      const last = messages[messages.length - 1];
+      if (last.role === "assistant" && last.content && !loading) {
+        setTimeout(() => speakText(last.content), 300);
+      }
+    }
+  }, [messages, voicesLoaded, loading]);
 
   async function submitMessage(text) {
     const value = text?.trim();
@@ -174,6 +237,20 @@ export default function ChatWindow({ studentId }) {
         display: "flex", alignItems: "center", gap: 10,
       }}>
         <VoiceButton onTranscript={submitMessage} />
+        <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={stopSpeaking}
+            style={{
+              padding: "11px 16px", borderRadius: 14, border: "none",
+              background: isSpeaking ? "linear-gradient(135deg, #dc2626, #ef4444)" : "rgba(220,38,38,0.15)",
+              color: isSpeaking ? "#FFFFFF" : "#dc2626",
+              fontSize: 13, fontWeight: 700,
+              cursor: "pointer", fontFamily: "'Inter', sans-serif",
+              boxShadow: isSpeaking ? "0 4px 16px rgba(220,38,38,0.35)" : "none",
+              transition: "all 0.2s ease", whiteSpace: "nowrap",
+            }}
+          >⏹ Stop</motion.button>
         <input
           style={{
             flex: 1, padding: "11px 16px", borderRadius: 14,
