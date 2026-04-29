@@ -170,3 +170,22 @@ class StudySession(SQLModel, table=True):
     topic: str
     duration_hours: float
     started_at: datetime = Field(default_factory=datetime.utcnow)
+
+class LearningPath(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    goal: str
+    total_duration_days: int
+    daily_hours: float
+    path_data: str  # JSON string
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class LearningPathGenerateRequest(SQLModel):
+    mode: str # 'prompt' or 'guided'
+    prompt: Optional[str] = None
+    answers: Optional[dict] = None
+    settings: Optional[dict] = None
+
+class LearningPathUpdateRequest(SQLModel):
+    path_data: str

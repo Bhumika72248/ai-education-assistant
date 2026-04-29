@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import ChatWindow from "../components/ChatWindow";
-import EngagementMeter from "../components/EngagementMeter";
 import PageWrapper from "../components/ui/PageWrapper";
 
 export default function Chat() {
@@ -35,7 +34,6 @@ export default function Chat() {
       >
         <ChatWindow />
       </motion.div>
-      <EngagementMeter />
     </PageWrapper>
   );
 }

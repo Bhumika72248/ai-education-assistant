@@ -1,7 +1,9 @@
 import os
 import shutil
-from fastapi import APIRouter, Depends, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse, Response
+from pydantic import BaseModel
+import httpx
 from sqlmodel import Session, select
 from db import get_session
 from models.schemas import ChatRequest, ChatMessage
@@ -13,6 +15,66 @@ from dotenv import load_dotenv
 load_dotenv()
 
 router = APIRouter()
+
+class TTSRequest(BaseModel):
+    text: str
+
+@router.post("/tts")
+async def generate_tts(req: TTSRequest):
+    api_key = os.getenv("VOICE_API_KEY")
+    if not api_key:
+        print("TTS Error: VOICE_API_KEY not found in environment")
+        raise HTTPException(status_code=500, detail="VOICE_API_KEY not configured")
+
+    print(f"TTS Request received for text: {req.text[:50]}...")
+    
+    # ElevenLabs Bella voice ID
+    voice_id = "EXAVITQu4vr4xnSDxMaL"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": api_key
+    }
+    
+    data = {
+        "text": req.text,
+        "model_id": "eleven_monolingual_v1",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.5
+        }
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            print("Attempting ElevenLabs TTS...")
+            response = await client.post(url, json=data, headers=headers, timeout=10.0)
+            if response.status_code == 200:
+                print("ElevenLabs TTS successful")
+                return Response(content=response.content, media_type="audio/mpeg")
+            else:
+                print(f"ElevenLabs failed: {response.status_code} - {response.text}")
+                # If it fails, we will try OpenAI as a fallback
+                openai_key = api_key # Assuming they might have used OpenAI key
+                if openai_key.startswith("sk-") or "invalid" in response.text.lower() or response.status_code == 401:
+                    print("Attempting OpenAI fallback...")
+                    o_url = "https://api.openai.com/v1/audio/speech"
+                    o_headers = {"Authorization": f"Bearer {api_key}"}
+                    o_data = {"model": "tts-1", "input": req.text, "voice": "nova"}
+                    o_response = await client.post(o_url, json=o_data, headers=o_headers, timeout=10.0)
+                    if o_response.status_code == 200:
+                        print("OpenAI TTS successful")
+                        return Response(content=o_response.content, media_type="audio/mpeg")
+                    else:
+                        print(f"OpenAI fallback failed: {o_response.status_code} - {o_response.text}")
+                
+                raise HTTPException(status_code=response.status_code, detail="TTS generation failed")
+        except Exception as e:
+            print(f"TTS Exception: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.post("/ask")

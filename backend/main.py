@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from db import create_db_and_tables
-from routers import auth, chat, quiz, analytics, assignments, courses, materials
+from routers import auth, chat, quiz, analytics, assignments, courses, materials, learning_path
 import os
 
 load_dotenv()
@@ -20,17 +20,7 @@ app = FastAPI(title="EduAI API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "https://edu-ai-ebon.vercel.app",
-        "https://edu-ai-olive.vercel.app",
-        os.getenv("FRONTEND_URL", "")
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,6 +33,7 @@ app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(assignments.router, prefix="/assignment", tags=["assignments"])
 app.include_router(courses.router, prefix="/courses", tags=["courses"])
 app.include_router(materials.router, prefix="/materials", tags=["materials"])
+app.include_router(learning_path.router, prefix="/learning-path", tags=["learning-path"])
 
 from fastapi.staticfiles import StaticFiles
 uploads_path = os.getenv("UPLOADS_PATH", "./data/uploads")

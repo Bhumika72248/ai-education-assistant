@@ -12,7 +12,9 @@ import Assignment from "./pages/Assignment";
 import Teacher from "./pages/Teacher";
 import StudentHub from "./pages/StudentHub";
 import Courses from "./pages/Courses";
+import LearningPath from "./pages/LearningPath";
 import Navbar from "./components/Navbar";
+import NarratorIntro from "./components/NarratorIntro";
 
 import bg1 from "./images/ChatGPT Image Apr 27, 2026, 11_50_27 PM.png";
 import bg2 from "./images/ChatGPT Image Apr 27, 2026, 11_51_06 PM.png";
@@ -29,6 +31,7 @@ const PAGE_BG = {
   "/notes":      bg3,
   "/assignment": bg1,
   "/courses":    bg4,
+  "/learning-path": bg1,
   "/teacher":    bg2,
 };
 
@@ -155,6 +158,7 @@ function AnimatedRoutes() {
                     <Route path="/notes"      element={<RoleRoute allowedRole="student"><Notes /></RoleRoute>} />
                     <Route path="/assignment" element={<RoleRoute allowedRole="student"><Assignment /></RoleRoute>} />
                     <Route path="/courses"    element={<RoleRoute allowedRole="student"><Courses /></RoleRoute>} />
+                    <Route path="/learning-path" element={<RoleRoute allowedRole="student"><LearningPath /></RoleRoute>} />
                     <Route path="/teacher"    element={<RoleRoute allowedRole="teacher"><Teacher /></RoleRoute>} />
                   </Routes>
                 </div>
@@ -169,8 +173,11 @@ function AnimatedRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <CustomCursor />
+    <>
+      <NarratorIntro />
+      <BrowserRouter>
+        <CustomCursor />
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -189,6 +196,7 @@ export default function App() {
         }}
       />
       <AnimatedRoutes />
-    </BrowserRouter>
+      </BrowserRouter>
+    </>
   );
 }

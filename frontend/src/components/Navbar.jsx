@@ -23,6 +23,7 @@ export default function Navbar() {
     : [
         { to: "/",           label: "Home",       icon: HomeIcon },
         { to: "/student",    label: "Hub",         icon: StudentIcon },
+        { to: "/learning-path", label: "Path",     icon: CoursesIcon },
         { to: "/courses",    label: "Courses",     icon: CoursesIcon },
         { to: "/chat",       label: "AI Tutor",    icon: ChatIcon },
         { to: "/quiz",       label: "Quiz",        icon: QuizIcon },

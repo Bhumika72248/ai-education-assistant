@@ -116,6 +116,22 @@ export default function Dashboard() {
 
   return (
     <PageWrapper>
+      {/* ── Demo Helper ── */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+        <button 
+          onClick={() => {
+            sessionStorage.removeItem("eduai_narrator_played");
+            window.location.reload();
+          }}
+          style={{ 
+            background: 'none', border: 'none', cursor: 'pointer', 
+            color: '#818cf8', fontSize: '12px', textDecoration: 'underline' 
+          }}
+        >
+          Replay intro
+        </button>
+      </div>
+
       {/* ── Hero Banner ── */}
       <motion.div
         initial={{ opacity: 0, y: 24 }}

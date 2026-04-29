@@ -9,72 +9,74 @@ export default function ChatWindow({ studentId }) {
   const bottomRef = useRef(null);
   const [input, setInput] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const voiceRef = useRef(null);
-  const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        const preferred = voices.find(v => v.name.includes("Microsoft Aria Online")) ||
-          voices.find(v => v.name.includes("Microsoft Guy Online")) ||
-          voices.find(v => v.name.includes("Microsoft Zira")) ||
-          voices.find(v => v.lang === "en-US") || voices[0];
-        voiceRef.current = preferred;
-        setVoicesLoaded(true);
-      }
-    };
-    
-    loadVoices();
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-    
     return () => {
-      window.speechSynthesis.onvoiceschanged = null;
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
       window.speechSynthesis.cancel();
     };
   }, []);
 
   function stopSpeaking() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
   }
 
-  function speakText(text) {
-    if (!text || !voicesLoaded) return;
+  async function speakText(text) {
+    if (!text) return;
     
-    window.speechSynthesis.cancel();
+    stopSpeaking();
     
-    const utterance = new SpeechSynthesisUtterance(text);
-    if (voiceRef.current) {
-      utterance.voice = voiceRef.current;
+    try {
+      const response = await fetch("http://localhost:8000/chat/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      
+      if (!response.ok) throw new Error("TTS failed");
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      
+      audio.onplay = () => setIsSpeaking(true);
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = (e) => {
+        console.error("Audio playback error:", e);
+        setIsSpeaking(false);
+      };
+      
+      await audio.play();
+    } catch (e) {
+      console.error("TTS Fetch/Playback Error:", e);
+      // Fallback
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
     }
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-    utterance.lang = "en-US";
-    
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = (e) => {
-      console.error("Speech error:", e);
-      setIsSpeaking(false);
-    };
-    
-    window.speechSynthesis.speak(utterance);
   }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     
-    if (messages.length > 0 && voicesLoaded) {
+    if (messages.length > 0) {
       const last = messages[messages.length - 1];
       if (last.role === "assistant" && last.content && !loading) {
         setTimeout(() => speakText(last.content), 300);
       }
     }
-  }, [messages, voicesLoaded, loading]);
+  }, [messages, loading]);
 
   async function submitMessage(text) {
     const value = text?.trim();
@@ -99,11 +101,12 @@ export default function ChatWindow({ studentId }) {
         background: "rgba(248,249,255,0.9)",
         display: "flex", alignItems: "center", gap: 12,
       }}>
-        <div style={{
+        <div className={isSpeaking ? "animate-aiSpeak" : ""} style={{
           width: 36, height: 36, borderRadius: 12,
           background: "linear-gradient(135deg, #6E48AA, #9D50BB)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 18, boxShadow: "0 4px 12px rgba(110,72,170,0.3)", color: '#fff'
+          fontSize: 18, boxShadow: "0 4px 12px rgba(110,72,170,0.3)", color: '#fff',
+          transition: "all 0.3s ease"
         }}><BotIcon size={18} /></div>
         <div>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1A0B42" }}>EduAI Tutor</p>
@@ -181,16 +184,18 @@ export default function ChatWindow({ studentId }) {
               }}
             >
               {m.role === "assistant" && (
-                <div style={{
+                <div className={isSpeaking && i === messages.length - 1 ? "animate-aiSpeak" : ""} style={{
                   width: 28, height: 28, borderRadius: 9, flexShrink: 0,
                   background: "linear-gradient(135deg, #6E48AA, #9D50BB)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 14, color: '#fff'
+                  fontSize: 14, color: '#fff',
+                  transition: "all 0.3s ease"
                 }}><BotIcon size={14} /></div>
               )}
               <div style={{
                 maxWidth: "78%", padding: "12px 16px",
-                fontSize: 14, lineHeight: 1.65,
+                fontSize: m.role === "assistant" ? 18 : 14, lineHeight: 1.65,
+                fontFamily: m.role === "assistant" ? "'Caveat', cursive" : "'Inter', sans-serif",
                 ...(m.role === "user"
                   ? {
                       background: "linear-gradient(135deg, #6E48AA, #9D50BB)",
