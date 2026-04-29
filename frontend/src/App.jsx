@@ -13,6 +13,7 @@ import Teacher from "./pages/Teacher";
 import StudentHub from "./pages/StudentHub";
 import Courses from "./pages/Courses";
 import Navbar from "./components/Navbar";
+import NarratorIntro from "./components/NarratorIntro";
 
 import bg1 from "./images/ChatGPT Image Apr 27, 2026, 11_50_27 PM.png";
 import bg2 from "./images/ChatGPT Image Apr 27, 2026, 11_51_06 PM.png";
@@ -169,8 +170,11 @@ function AnimatedRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <CustomCursor />
+    <>
+      <NarratorIntro />
+      <BrowserRouter>
+        <CustomCursor />
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -189,6 +193,7 @@ export default function App() {
         }}
       />
       <AnimatedRoutes />
-    </BrowserRouter>
+      </BrowserRouter>
+    </>
   );
 }
