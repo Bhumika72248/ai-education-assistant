@@ -7,7 +7,7 @@ from models.schemas import QuizSubmission
 from dotenv import load_dotenv
 from urllib.parse import urlparse, parse_qs
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound, VideoUnavailable
 
 load_dotenv()
 
@@ -127,31 +127,38 @@ async def generate_youtube_quiz(url: str):
     transcript = None
     error_msg = None
     
-    # Try to get transcript with broad exception handling
+    # Try to get transcript using the correct API
     try:
         print(f"🔍 Attempting to fetch transcript for video {video_id}...")
-        transcript_data = YouTubeTranscriptApi().fetch(video_id, languages=['en'])
-        transcript_list = transcript_data.to_raw_data()
-        transcript = " ".join([t.get("text", "") for t in transcript_list])
-        print(f"✅ Successfully retrieved transcript for video {video_id} ({len(transcript)} characters)")
-    except NoTranscriptFound:
-        print(f"⚠️ No English transcript found for video {video_id}, trying other languages...")
+        api = YouTubeTranscriptApi()
+        
+        # Try English first
         try:
-            # Try any available language
-            transcript_data = YouTubeTranscriptApi().fetch(video_id)
-            transcript_list = transcript_data.to_raw_data()
-            transcript = " ".join([t.get("text", "") for t in transcript_list])
-            print(f"✅ Successfully retrieved transcript in alternate language for video {video_id} ({len(transcript)} characters)")
-        except Exception as e:
-            error_msg = "No transcript available in any language"
-            print(f"⚠️ Could not retrieve transcript for video {video_id}: {e}")
+            result = api.fetch(video_id, languages=['en'])
+            transcript_data = result.to_raw_data()
+            transcript = " ".join([t.get("text", "") for t in transcript_data])
+            print(f"✅ Successfully retrieved English transcript for video {video_id} ({len(transcript)} characters)")
+        except NoTranscriptFound:
+            # Try without language restriction (any available language)
+            print(f"⚠️ No English transcript, trying any available language...")
+            try:
+                result = api.fetch(video_id)
+                transcript_data = result.to_raw_data()
+                transcript = " ".join([t.get("text", "") for t in transcript_data])
+                print(f"✅ Retrieved transcript in alternate language for video {video_id} ({len(transcript)} characters)")
+            except Exception as e:
+                error_msg = f"No transcript available: {str(e)[:100]}"
+                print(f"⚠️ Could not retrieve any transcript for video {video_id}: {e}")
     except TranscriptsDisabled:
         error_msg = "Transcripts are disabled for this video"
         print(f"⚠️ Transcripts disabled for video {video_id}")
+    except VideoUnavailable:
+        error_msg = "Video is unavailable or private"
+        print(f"⚠️ Video {video_id} is unavailable")
     except Exception as e:
         # Catch all other exceptions (including IP blocks, network errors, etc.)
         error_msg = f"Could not retrieve transcript: {str(e)[:100]}"
-        print(f"⚠️ Could not retrieve transcript for video {video_id}: {e}")
+        print(f"⚠️ Exception for video {video_id}: {e}")
     
     # If transcript retrieval failed, use AI to generate quiz
     if not transcript or error_msg:
