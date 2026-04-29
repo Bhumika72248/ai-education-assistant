@@ -76,8 +76,11 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
 def login(form: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
     print(f"[LOGIN] Attempt for email={form.username}")
     user = session.exec(select(User).where(User.email == form.username)).first()
-    if not user or not verify_password(form.password, user.hashed_password):
-        print(f"[LOGIN] Failed for email={form.username}")
+    if not user:
+        print(f"[LOGIN] Failed: User with email {form.username} not found")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not verify_password(form.password, user.hashed_password):
+        print(f"[LOGIN] Failed: Password incorrect for email {form.username}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user.email, "role": user.role})
     print(f"[LOGIN] Success: user_id={user.id} role={user.role}")
