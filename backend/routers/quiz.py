@@ -25,8 +25,12 @@ async def generate(request: QuizRequest):
 @router.post("/from-youtube")
 async def from_youtube(request: YouTubeQuizRequest):
     try:
-        quiz = await generate_youtube_quiz(request.url)
-        return {"quiz": quiz}
+        result = await generate_youtube_quiz(request.url)
+        # Handle both dict with quiz+note and plain list
+        if isinstance(result, dict):
+            return result
+        else:
+            return {"quiz": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
