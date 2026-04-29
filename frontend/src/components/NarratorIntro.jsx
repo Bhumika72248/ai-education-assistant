@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import introVideo from "../images/eduai bg.mp4";
+import introVideo from "../images/eduai-bg.mp4";
 import introLogo from "../images/eduai logo.png";
 
 export default function NarratorIntro({ onDone }) {
