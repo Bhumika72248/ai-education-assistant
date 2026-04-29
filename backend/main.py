@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from db import create_db_and_tables
-from routers import auth, chat, quiz, analytics, assignments, courses, materials
+from routers import auth, chat, quiz, analytics, assignments, courses, materials, learning_path
 import os
 
 load_dotenv()
@@ -43,6 +43,7 @@ app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(assignments.router, prefix="/assignment", tags=["assignments"])
 app.include_router(courses.router, prefix="/courses", tags=["courses"])
 app.include_router(materials.router, prefix="/materials", tags=["materials"])
+app.include_router(learning_path.router, prefix="/learning-path", tags=["learning-path"])
 
 from fastapi.staticfiles import StaticFiles
 uploads_path = os.getenv("UPLOADS_PATH", "./data/uploads")
