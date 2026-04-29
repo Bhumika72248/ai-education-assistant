@@ -6,6 +6,7 @@ import {
   CoursesIcon,
   ChatIcon,
   QuizIcon,
+  NotesIcon,
   AnalyticsIcon,
   AssignmentIcon,
 } from "./ui/Icon";
@@ -25,6 +26,7 @@ export default function Navbar() {
         { to: "/courses",    label: "Courses",     icon: CoursesIcon },
         { to: "/chat",       label: "AI Tutor",    icon: ChatIcon },
         { to: "/quiz",       label: "Quiz",        icon: QuizIcon },
+        { to: "/notes",      label: "AI Notes",    icon: NotesIcon },
         { to: "/analytics",  label: "Analytics",   icon: AnalyticsIcon },
         { to: "/assignment", label: "Assignments", icon: AssignmentIcon },
       ];
