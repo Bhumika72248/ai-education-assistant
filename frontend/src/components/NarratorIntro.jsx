@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import introVideo from "../images/eduai bg.mp4";
+import introLogo from "../images/eduai logo.png";
 
 export default function NarratorIntro({ onDone }) {
   const [visible, setVisible] = useState(true);
@@ -143,9 +145,19 @@ export default function NarratorIntro({ onDone }) {
 
   return (
     <div className={`fixed inset-0 z-[9999] bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-600 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
+        loop
+        muted
+        playsInline
+      >
+        <source src={introVideo} type="video/mp4" />
+      </video>
+      <div className="absolute inset-0 bg-slate-950/60" />
       
       {/* Brand & Tagline */}
-      <div className="absolute top-16 flex flex-col items-center">
+      <div className="absolute top-16 flex flex-col items-center z-10">
         <div className="flex items-center gap-2">
           <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">EduAI</h1>
           <span className="text-2xl text-indigo-400">✦</span>
@@ -156,10 +168,14 @@ export default function NarratorIntro({ onDone }) {
       </div>
 
       {/* Central Visualizer */}
-      <div className="flex flex-col items-center justify-center mt-12 mb-12">
-        {/* Glowing Orb */}
-        <div className="relative mb-12 flex justify-center items-center h-24">
-          <div className={`w-24 h-24 rounded-full bg-indigo-500 shadow-[0_0_40px_rgba(99,102,241,0.5)] ${isSpeaking ? 'animate-orbPulse' : ''} transition-all duration-300`} />
+      <div className="flex flex-col items-center justify-center mt-12 mb-12 z-10">
+        {/* Logo */}
+        <div className={`relative mb-12 flex justify-center items-center h-24 ${isSpeaking ? 'animate-orbPulse' : ''} transition-all duration-300`}>
+          <img
+            src={introLogo}
+            alt="EduAI logo"
+            className="w-24 h-24 object-cover rounded-full drop-shadow-[0_0_30px_rgba(99,102,241,0.45)]"
+          />
         </div>
 
         {/* Sound Bars */}
@@ -175,7 +191,7 @@ export default function NarratorIntro({ onDone }) {
       </div>
 
       {/* Typewriter Text */}
-      <div className="w-full max-w-[600px] px-8 text-center min-h-[120px]">
+      <div className="w-full max-w-[600px] px-8 text-center min-h-[120px] z-10">
         <p className="text-slate-100 leading-relaxed font-medium" style={{ fontSize: '24px', fontFamily: "'Caveat', cursive" }}>
           {displayedText}
         </p>
@@ -184,7 +200,7 @@ export default function NarratorIntro({ onDone }) {
       {/* Skip Button */}
       <button 
         onClick={handleSkip}
-        className="absolute bottom-8 right-8 px-4 py-2 text-sm text-slate-400 border border-slate-600 rounded-full hover:bg-slate-800 transition-colors"
+        className="absolute bottom-8 right-8 px-4 py-2 text-sm text-slate-200 border border-slate-600 rounded-full hover:bg-slate-800 transition-colors z-10"
       >
         Skip intro
       </button>
