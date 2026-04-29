@@ -2,16 +2,19 @@ import os
 import json
 import re
 import google.generativeai as genai
+from langchain_groq import ChatGroq
 from models.schemas import QuizSubmission
 from dotenv import load_dotenv
 from urllib.parse import urlparse, parse_qs
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
 
 load_dotenv()
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 MODEL_NAME = "gemini-2.0-flash"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 MOCK_QUIZ = [
     {
@@ -67,7 +70,7 @@ def clean_json_response(text: str) -> str:
     return text.strip()
 
 async def generate_quiz(topic: str, num_questions: int = 5, difficulty: str = "medium", adaptive: bool = False) -> list:
-    model = genai.GenerativeModel(MODEL_NAME)
+    groq_llm = ChatGroq(model=GROQ_MODEL, api_key=os.getenv("GROQ_API_KEY"), temperature=0.7)
     
     if adaptive:
         adaptive_instruction = "Generate questions in order of increasing difficulty from easy to hard. The difficulty_level field should reflect this progression."
@@ -90,17 +93,20 @@ Each object must have exactly these keys:
 JSON array:"""
     
     try:
-        response = model.generate_content(prompt)
+        response = groq_llm.invoke(prompt)
+        return json.loads(clean_json_response(response.content))
+    except json.JSONDecodeError:
         try:
-            return json.loads(clean_json_response(response.text))
-        except json.JSONDecodeError:
-            response = model.generate_content(prompt)
-            return json.loads(clean_json_response(response.text))
+            response = groq_llm.invoke(prompt)
+            return json.loads(clean_json_response(response.content))
+        except Exception as e:
+            print(f"Fallback to mock quiz due to error: {e}")
+            return MOCK_QUIZ[:num_questions]
     except Exception as e:
         print(f"Fallback to mock quiz due to error: {e}")
         return MOCK_QUIZ[:num_questions]
 
-async def generate_youtube_quiz(url: str) -> list:
+async def generate_youtube_quiz(url: str):
     parsed = urlparse(url)
     video_id = None
     if parsed.hostname and ("youtube.com" in parsed.hostname):
@@ -118,35 +124,65 @@ async def generate_youtube_quiz(url: str) -> list:
     if not video_id:
         raise ValueError("Invalid YouTube URL or unable to extract video id")
 
+    transcript = None
+    error_msg = None
+    
+    # Try to get transcript with broad exception handling
     try:
-        yt = YouTubeTranscriptApi()
-        try:
-            tl = yt.list(video_id)
-            available = [t.language_code for t in tl]
-        except Exception:
-            available = []
-
-        chosen_lang = None
-        note = None
-        if "en" in available:
-            chosen_lang = "en"
-        elif available:
-            chosen_lang = available[0]
-            note = f"Transcript available only in '{chosen_lang}'. Using that language."
-
-        if chosen_lang:
-            fetched = yt.fetch(video_id, languages=(chosen_lang,))
-        else:
-            fetched = yt.fetch(video_id)
-
-        transcript_list = fetched.to_raw_data()
+        print(f"🔍 Attempting to fetch transcript for video {video_id}...")
+        transcript_data = YouTubeTranscriptApi().fetch(video_id, languages=['en'])
+        transcript_list = transcript_data.to_raw_data()
         transcript = " ".join([t.get("text", "") for t in transcript_list])
+        print(f"✅ Successfully retrieved transcript for video {video_id} ({len(transcript)} characters)")
+    except NoTranscriptFound:
+        print(f"⚠️ No English transcript found for video {video_id}, trying other languages...")
+        try:
+            # Try any available language
+            transcript_data = YouTubeTranscriptApi().fetch(video_id)
+            transcript_list = transcript_data.to_raw_data()
+            transcript = " ".join([t.get("text", "") for t in transcript_list])
+            print(f"✅ Successfully retrieved transcript in alternate language for video {video_id} ({len(transcript)} characters)")
+        except Exception as e:
+            error_msg = "No transcript available in any language"
+            print(f"⚠️ Could not retrieve transcript for video {video_id}: {e}")
+    except TranscriptsDisabled:
+        error_msg = "Transcripts are disabled for this video"
+        print(f"⚠️ Transcripts disabled for video {video_id}")
     except Exception as e:
-        raise ValueError(f"Could not retrieve transcript for video {video_id}: {e}")
+        # Catch all other exceptions (including IP blocks, network errors, etc.)
+        error_msg = f"Could not retrieve transcript: {str(e)[:100]}"
+        print(f"⚠️ Could not retrieve transcript for video {video_id}: {e}")
+    
+    # If transcript retrieval failed, use AI to generate quiz
+    if not transcript or error_msg:
+        print(f"🔄 Generating fallback quiz for video {video_id}")
+        groq_llm = ChatGroq(model=GROQ_MODEL, api_key=os.getenv("GROQ_API_KEY"), temperature=0.7)
+        fallback_prompt = """Generate a 5-question multiple choice quiz about general computer science and programming topics suitable for students.
 
+Respond STRICTLY with a valid JSON array of objects. Do not include markdown formatting or any preamble.
+Each object must have exactly these keys:
+- "id": an integer starting from 1
+- "question": the question text
+- "options": an array of 4 strings, representing options A, B, C, D in order
+- "correct": a single character "A", "B", "C", or "D"
+- "explanation": a brief explanation of why the answer is correct
+- "difficulty_level": "medium"
+
+JSON array:"""
+        
+        try:
+            response = groq_llm.invoke(fallback_prompt)
+            quiz = json.loads(clean_json_response(response.content))
+            return {"quiz": quiz, "note": f"⚠️ Could not retrieve video transcript. Generated a general educational quiz instead."}
+        except Exception as e:
+            print(f"⚠️ Fallback AI generation failed: {e}. Using mock quiz.")
+            return {"quiz": MOCK_QUIZ[:5], "note": "⚠️ Could not retrieve transcript. Using sample quiz."}
+
+    # Successfully got transcript - generate quiz from it
+    print(f"✅ Generating quiz from transcript for video {video_id}")
     transcript = transcript[:4000]
 
-    model = genai.GenerativeModel(MODEL_NAME)
+    groq_llm = ChatGroq(model=GROQ_MODEL, api_key=os.getenv("GROQ_API_KEY"), temperature=0.7)
     prompt = f"""Generate a 5-question multiple choice quiz based strictly on the following video transcript. Do not use generic knowledge, use only what is explained in this transcript.
 
 Transcript:
@@ -164,22 +200,23 @@ Each object must have exactly these keys:
 JSON array:"""
     
     try:
-        response = model.generate_content(prompt)
+        response = groq_llm.invoke(prompt)
+        quiz = json.loads(clean_json_response(response.content))
+        return {"quiz": quiz}
+    except json.JSONDecodeError:
         try:
-            quiz = json.loads(clean_json_response(response.text))
-        except json.JSONDecodeError:
-            response = model.generate_content(prompt)
-            quiz = json.loads(clean_json_response(response.text))
+            response = groq_llm.invoke(prompt)
+            quiz = json.loads(clean_json_response(response.content))
+            return {"quiz": quiz}
+        except Exception as e:
+            print(f"⚠️ Quiz generation from transcript failed: {e}. Using mock quiz.")
+            return {"quiz": MOCK_QUIZ[:5]}
     except Exception as e:
-        print(f"Fallback to mock quiz due to error: {e}")
-        return MOCK_QUIZ[:5]
-
-    if 'note' in locals() and note:
-        return {"quiz": quiz, "note": note}
-    return quiz
+        print(f"⚠️ Quiz generation failed: {e}. Using mock quiz.")
+        return {"quiz": MOCK_QUIZ[:5]}
 
 async def generate_exam_quiz(exam: str, section: str, num_questions: int = 5) -> dict:
-    model = genai.GenerativeModel(MODEL_NAME)
+    groq_llm = ChatGroq(model=GROQ_MODEL, api_key=os.getenv("GROQ_API_KEY"), temperature=0.7)
     prompt = f"""Generate a {num_questions}-question multiple choice quiz for the "{exam}" exam, specifically for the "{section}" section.
 The questions must be strictly in the style, pattern, difficulty level, and format of the real {exam} exam.
 
@@ -195,12 +232,15 @@ Each object must have exactly these keys:
 JSON array:"""
     
     try:
-        response = model.generate_content(prompt)
+        response = groq_llm.invoke(prompt)
+        questions = json.loads(clean_json_response(response.content))
+    except json.JSONDecodeError:
         try:
-            questions = json.loads(clean_json_response(response.text))
-        except json.JSONDecodeError:
-            response = model.generate_content(prompt)
-            questions = json.loads(clean_json_response(response.text))
+            response = groq_llm.invoke(prompt)
+            questions = json.loads(clean_json_response(response.content))
+        except Exception as e:
+            print(f"Fallback to mock exam due to error: {e}")
+            questions = MOCK_QUIZ[:num_questions]
     except Exception as e:
         print(f"Fallback to mock exam due to error: {e}")
         questions = MOCK_QUIZ[:num_questions]

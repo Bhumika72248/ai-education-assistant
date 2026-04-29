@@ -39,6 +39,7 @@ export default function Quiz() {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const [quiz, setQuiz]                 = useState(null);
+  const [quizNote, setQuizNote]         = useState(null);
   const [resources, setResources]       = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore]               = useState(0);
@@ -59,7 +60,7 @@ export default function Quiz() {
   }, [location]);
 
   const resetQuizState = () => {
-    setQuiz(null); setCurrentIndex(0); setScore(0);
+    setQuiz(null); setQuizNote(null); setCurrentIndex(0); setScore(0);
     setIsFinished(false); setError(null); setResources(null);
   };
 
@@ -80,7 +81,9 @@ export default function Quiz() {
     setLoading(true); setError(null); setLoadingMsg("Reading video transcript...");
     try {
       const res = await api.post("/quiz/from-youtube", { url: youtubeUrl });
-      setQuiz(res.data.quiz); setCurrentIndex(0); setIsFinished(false); setScore(0);
+      setQuiz(res.data.quiz);
+      setQuizNote(res.data.note || null);
+      setCurrentIndex(0); setIsFinished(false); setScore(0);
     } catch (err) { setError(err.response?.data?.detail || "Failed to generate from YouTube"); }
     finally { setLoading(false); }
   };
@@ -297,6 +300,20 @@ export default function Quiz() {
   if (quiz && currentIndex < quiz.length) return (
     <PageWrapper>
       <div style={{ maxWidth: 620, margin: "0 auto" }}>
+        {quizNote && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: "rgba(245,158,11,0.1)", color: "#f59e0b",
+              padding: "12px 16px", borderRadius: 10, marginBottom: 20,
+              fontSize: 13, fontWeight: 500,
+              border: "1px solid rgba(245,158,11,0.3)",
+            }}
+          >
+            {quizNote}
+          </motion.div>
+        )}
         <div style={{ marginBottom: 20, height: 5, background: "rgba(110,72,170,0.08)", borderRadius: 99, overflow: "hidden" }}>
           <motion.div
             animate={{ width: `${(currentIndex / quiz.length) * 100}%` }}
