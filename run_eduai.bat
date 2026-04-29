@@ -1,17 +1,37 @@
 @echo off
-echo Starting EduAI Full-Stack Application...
+echo.
+echo =====================================================
+echo   EduAI - AI Education Assistant
+echo =====================================================
+echo.
 
-:: Open Backend in a new window
-start cmd /k "cd backend && uvicorn main:app --reload --port 8000"
+:: ── Backend (FastAPI + uvicorn) ──────────────────────
+echo [1/2] Starting Backend on http://localhost:8000 ...
+start "EduAI Backend" cmd /k "cd /d d:\AI-Tutor\ai-education-assistant\backend && python -m uvicorn main:app --reload --port 8000"
 
-:: Open Frontend in a new window
-start cmd /k "cd frontend && npm.cmd run dev"
+:: Give backend a moment to bind
+timeout /t 3 /nobreak >nul
+
+:: ── Frontend (Vite + React) ───────────────────────────
+echo [2/2] Starting Frontend on http://localhost:5173 ...
+start "EduAI Frontend" cmd /k "cd /d d:\AI-Tutor\ai-education-assistant\frontend && npm.cmd run dev -- --port 5173"
+
+:: Wait for Vite to boot
+timeout /t 4 /nobreak >nul
 
 echo.
-echo ======================================================
-echo Backend is running at http://localhost:8000
-echo Frontend is running at http://localhost:5173
-echo ======================================================
+echo =====================================================
+echo   Both servers are starting up:
 echo.
-echo Close the newly opened command windows to stop the servers.
+echo   Frontend  →  http://localhost:5173
+echo   Backend   →  http://localhost:8000
+echo   API Docs  →  http://localhost:8000/docs
+echo.
+echo   Login / Register at: http://localhost:5173/login
+echo   Student Portal     : http://localhost:5173/student
+echo   Teacher Portal     : http://localhost:5173/teacher
+echo =====================================================
+echo.
+echo   Close the two opened command windows to stop.
+echo.
 pause

@@ -1,0 +1,9 @@
+d:\AI-Tutor\ai-education-assistant\run_eduai.bat
+
+or manually open these two terminal 
+cd d:\AI-Tutor\ai-education-assistant\backend
+uvicorn main:app --reload --port 8000
+
+
+cd d:\AI-Tutor\ai-education-assistant\frontend
+npm run dev
