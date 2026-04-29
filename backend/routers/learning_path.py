@@ -3,7 +3,8 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from db import get_session
-from models.schemas import LearningPath, LearningPathGenerateRequest, LearningPathUpdateRequest
+from models.schemas import LearningPath, LearningPathGenerateRequest, LearningPathUpdateRequest, User
+from routers.auth import get_current_user
 from datetime import datetime
 import google.generativeai as genai
 
@@ -81,7 +82,11 @@ Rules:
 """
 
 @router.post("/generate")
-async def generate_path(req: LearningPathGenerateRequest, session: Session = Depends(get_session)):
+async def generate_path(
+    req: LearningPathGenerateRequest, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
     model = get_gemini_model()
     
     if req.mode == "prompt" and req.prompt:
@@ -122,8 +127,8 @@ async def generate_path(req: LearningPathGenerateRequest, session: Session = Dep
             
             print(f"Successfully parsed JSON with {len(path_dict.get('weeks', []))} weeks")
             
-            # Save or update in DB
-            user_id = 1
+            # Save or update in DB using authenticated user's ID
+            user_id = current_user.id
             existing_path = session.exec(select(LearningPath).where(LearningPath.user_id == user_id)).first()
             
             if existing_path:
@@ -144,7 +149,7 @@ async def generate_path(req: LearningPathGenerateRequest, session: Session = Dep
                 session.add(new_path)
             
             session.commit()
-            print("Learning path saved to database successfully")
+            print(f"Learning path saved to database for user_id={user_id}")
             return path_dict
 
         except Exception as e:
@@ -162,8 +167,11 @@ async def generate_path(req: LearningPathGenerateRequest, session: Session = Dep
                 )
 
 @router.get("/me")
-async def get_my_path(session: Session = Depends(get_session)):
-    user_id = 1
+async def get_my_path(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    user_id = current_user.id
     existing_path = session.exec(select(LearningPath).where(LearningPath.user_id == user_id)).first()
     if not existing_path:
         return {"has_path": False}
@@ -174,8 +182,12 @@ async def get_my_path(session: Session = Depends(get_session)):
     }
 
 @router.put("/update")
-async def update_path(req: LearningPathUpdateRequest, session: Session = Depends(get_session)):
-    user_id = 1
+async def update_path(
+    req: LearningPathUpdateRequest, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    user_id = current_user.id
     existing_path = session.exec(select(LearningPath).where(LearningPath.user_id == user_id)).first()
     if not existing_path:
         raise HTTPException(status_code=404, detail="Path not found")
@@ -186,6 +198,7 @@ async def update_path(req: LearningPathUpdateRequest, session: Session = Depends
         existing_path.updated_at = datetime.utcnow()
         session.add(existing_path)
         session.commit()
+        print(f"Learning path updated for user_id={user_id}")
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid path data: {str(e)}")

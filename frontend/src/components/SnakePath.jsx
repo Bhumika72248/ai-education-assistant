@@ -18,9 +18,9 @@ export default function SnakePath({ pathData, viewMode, onNodeClick }) {
   const layout = useMemo(() => {
     if (!pathData || !pathData.weeks) return { nodes: [], svgPath: "", completedPath: "", height: 0 };
     
-    const rowHeight = 160;
-    const paddingX = 60;
-    const paddingTop = 80;
+    const rowHeight = 180;
+    const paddingX = 80;
+    const paddingTop = 100;
     const availableWidth = width - (paddingX * 2);
     
     let currentY = paddingTop;
@@ -138,16 +138,16 @@ export default function SnakePath({ pathData, viewMode, onNodeClick }) {
         nodes.push({
           id: 'end',
           x: milestoneX,
-          y: currentY + 100,
+          y: currentY + 180,
           isEnd: true,
           goalText: pathData.goal,
           task: { completed: false }
         });
-        pathD += ` L ${milestoneX} ${currentY + 100}`;
+        pathD += ` L ${milestoneX} ${currentY + 180}`;
       }
     }
 
-    return { nodes, pathD, completedD, height: currentY + 150 };
+    return { nodes, pathD, completedD, height: currentY + 320 };
   }, [pathData, width]);
 
   if (viewMode === "this-week") {
@@ -156,14 +156,14 @@ export default function SnakePath({ pathData, viewMode, onNodeClick }) {
   }
 
   return (
-    <div ref={containerRef} className="relative w-full overflow-hidden" style={{ height: layout.height }}>
+    <div ref={containerRef} className="relative w-full overflow-visible" style={{ height: layout.height, minHeight: layout.height }}>
       <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
         {/* Background Path */}
         <path 
           d={layout.pathD} 
           fill="none" 
           stroke="#e2e8f0" 
-          strokeWidth="6" 
+          strokeWidth="8" 
           strokeLinecap="round" 
           strokeLinejoin="round" 
         />
@@ -171,36 +171,79 @@ export default function SnakePath({ pathData, viewMode, onNodeClick }) {
         <path 
           d={layout.completedD} 
           fill="none" 
-          stroke="#6366f1" 
-          strokeWidth="6" 
+          stroke="url(#gradient)" 
+          strokeWidth="8" 
           strokeLinecap="round" 
           strokeLinejoin="round" 
           className="transition-all duration-1000 ease-out"
         />
+        <defs>
+          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style={{ stopColor: '#6E48AA', stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: '#9D50BB', stopOpacity: 1 }} />
+          </linearGradient>
+        </defs>
       </svg>
 
       {/* Nodes */}
       {layout.nodes.map((node, i) => {
         if (node.isStart) {
           return (
-            <div key="start" className="absolute transform -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-full z-10" style={{ left: node.x, top: node.y }}>
+            <div 
+              key="start" 
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 text-white text-xs font-bold px-4 py-2 rounded-full z-10" 
+              style={{
+                left: node.x,
+                top: node.y,
+                background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                boxShadow: '0 4px 12px rgba(30,41,59,0.3)'
+              }}
+            >
               START
             </div>
           );
         }
         if (node.isEnd) {
           return (
-            <div key="end" className="absolute transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-amber-400 to-amber-500 text-white font-bold px-6 py-3 rounded-2xl z-10 shadow-xl border-2 border-white text-center flex flex-col items-center max-w-[200px]" style={{ left: node.x, top: node.y }}>
-              <span className="text-2xl mb-1">🏆</span>
-              <span className="text-xs">{node.goalText}</span>
+            <div 
+              key="end" 
+              className="absolute text-white font-bold rounded-2xl z-10 text-center flex flex-col items-center" 
+              style={{ 
+                left: node.x,
+                top: node.y,
+                transform: 'translate(-50%, -50%)',
+                width: '320px',
+                padding: '24px 28px',
+                background: 'linear-gradient(135deg, #6E48AA 0%, #9D50BB 100%)',
+                boxShadow: '0 12px 40px rgba(110,72,170,0.5), 0 0 20px rgba(157,80,187,0.3)',
+                border: '3px solid rgba(255,255,255,0.4)'
+              }}
+            >
+              <span style={{ fontSize: '42px', marginBottom: '12px' }}>🏆</span>
+              <span style={{ fontSize: '15px', fontWeight: 700, lineHeight: '1.5', wordBreak: 'break-word', width: '100%' }}>{node.goalText}</span>
             </div>
           );
         }
         if (node.isMilestone) {
           return (
-            <div key={node.id} className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${node.task.completed ? 'bg-indigo-100 border-indigo-300' : 'bg-slate-50 border-slate-200'} border-2 px-4 py-2 rounded-xl z-10 shadow-sm flex flex-col items-center text-center max-w-[140px] transition-colors`} style={{ left: node.x, top: node.y }}>
-              <span className="text-xs font-bold text-slate-400 uppercase">Week {node.weekNumber}</span>
-              <span className={`text-xs font-medium mt-1 ${node.task.completed ? 'text-indigo-700' : 'text-slate-600'}`}>{node.milestoneText}</span>
+            <div 
+              key={node.id} 
+              className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${node.task.completed ? 'border-purple-300' : 'border-slate-200'} border-2 rounded-xl z-10 flex flex-col items-center text-center transition-all hover:shadow-xl`} 
+              style={{ 
+                left: node.x, 
+                top: node.y,
+                width: '200px',
+                padding: '14px 18px',
+                background: node.task.completed 
+                  ? 'linear-gradient(135deg, rgba(110,72,170,0.1) 0%, rgba(157,80,187,0.15) 100%)' 
+                  : 'white',
+                boxShadow: node.task.completed 
+                  ? '0 4px 16px rgba(110,72,170,0.2)' 
+                  : '0 2px 8px rgba(0,0,0,0.08)'
+              }}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wide whitespace-nowrap" style={{ color: node.task.completed ? '#6E48AA' : '#94a3b8', marginBottom: '8px' }}>Week {node.weekNumber}</span>
+              <span className={`text-xs font-semibold leading-tight w-full ${node.task.completed ? 'text-purple-700' : 'text-slate-700'}`} style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{node.milestoneText}</span>
             </div>
           );
         }

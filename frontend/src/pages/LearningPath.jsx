@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PathOnboarding from "../components/PathOnboarding";
 import SnakePath from "../components/SnakePath";
-import PathSettings from "../components/PathSettings";
 import NodePanel from "../components/NodePanel";
+import PageWrapper from "../components/ui/PageWrapper";
+import api from "../api/client";
 
 export default function LearningPath() {
   const [hasPath, setHasPath] = useState(false);
@@ -11,7 +12,6 @@ export default function LearningPath() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   
-  // "overview", "this-week", "today"
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem("eduai_path_view_mode") || "overview";
   });
@@ -28,15 +28,10 @@ export default function LearningPath() {
 
   const fetchMyPath = async () => {
     try {
-      const res = await fetch("http://localhost:8000/learning-path/me", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token") || ""}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.has_path) {
-          setPathData(data.path_data);
-          setHasPath(true);
-        }
+      const res = await api.get("/learning-path/me");
+      if (res.data.has_path) {
+        setPathData(res.data.path_data);
+        setHasPath(true);
       }
     } catch (e) {
       console.error(e);
@@ -48,20 +43,9 @@ export default function LearningPath() {
   const handleGenerate = async (payload) => {
     setGenerating(true);
     try {
-      const res = await fetch("http://localhost:8000/learning-path/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error("Failed to generate path");
+      const res = await api.post("/learning-path/generate", payload);
+      setPathData(res.data);
       
-      const data = await res.json();
-      setPathData(data);
-      
-      // Simulate the 3-second substantial loading screen as requested
       setTimeout(() => {
         setHasPath(true);
         setGenerating(false);
@@ -77,26 +61,16 @@ export default function LearningPath() {
   const handleUpdateNode = async (weekIdx, dayIdx, taskId) => {
     if (!pathData) return;
     
-    // Create deep copy
     const newPath = JSON.parse(JSON.stringify(pathData));
     const task = newPath.weeks[weekIdx].days[dayIdx].tasks.find(t => t.id === taskId);
     if (task) {
       task.completed = true;
     }
     
-    // Optimistic update
     setPathData(newPath);
     
-    // Save to backend
     try {
-      await fetch("http://localhost:8000/learning-path/update", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
-        },
-        body: JSON.stringify({ path_data: JSON.stringify(newPath) })
-      });
+      await api.put("/learning-path/update", { path_data: JSON.stringify(newPath) });
     } catch (e) {
       console.error("Failed to sync path update", e);
     }
@@ -112,49 +86,131 @@ export default function LearningPath() {
     return <PathOnboarding onGenerate={handleGenerate} />;
   }
 
-  return (
-    <div className="relative w-full h-full min-h-[85vh]">
-      {/* Top Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Your Learning Path</h1>
-          <p className="text-slate-500 text-sm mt-1">{pathData.goal}</p>
-        </div>
+  // Calculate dynamic stats
+  const calculateStats = () => {
+    if (!pathData || !pathData.weeks) return { remainingDays: 0, currentWeek: 1, dailyGoal: '0 hrs' };
+    
+    let totalDays = 0;
+    let completedDays = 0;
+    let currentWeekNum = 1;
+    let foundCurrentWeek = false;
+    let totalMinutes = 0;
+    
+    pathData.weeks.forEach(week => {
+      week.days.forEach(day => {
+        totalDays++;
+        const allTasksCompleted = day.tasks.every(t => t.completed);
+        if (allTasksCompleted) {
+          completedDays++;
+        } else if (!foundCurrentWeek) {
+          currentWeekNum = week.week_number;
+          foundCurrentWeek = true;
+        }
         
-        <div className="flex items-center gap-2 bg-white/60 p-1 rounded-xl shadow-sm border border-slate-200">
+        // Calculate average daily minutes
+        day.tasks.forEach(t => {
+          totalMinutes += t.estimated_minutes || 0;
+        });
+      });
+    });
+    
+    const remainingDays = totalDays - completedDays;
+    const avgDailyMinutes = totalDays > 0 ? Math.round(totalMinutes / totalDays) : 0;
+    const dailyGoal = avgDailyMinutes >= 60 
+      ? `${Math.round(avgDailyMinutes / 60 * 10) / 10} hrs` 
+      : `${avgDailyMinutes} min`;
+    
+    return { remainingDays, currentWeek: currentWeekNum, dailyGoal };
+  };
+  
+  const stats = calculateStats();
+
+  return (
+    <PageWrapper>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        style={{ marginBottom: 24 }}
+      >
+        <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 8px", color: "#1A0B42", letterSpacing: "-0.03em" }}>
+          Your Learning Path
+        </h1>
+        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>{pathData.goal}</p>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.5 }}
+        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 24 }}
+      >
+        <div className="card-solid" style={{ textAlign: "center", border: "1px solid rgba(110,72,170,0.15)" }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Remaining</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#6E48AA", letterSpacing: "-0.02em" }}>{stats.remainingDays} Days</div>
+        </div>
+        <div className="card-solid" style={{ textAlign: "center", border: "1px solid rgba(110,72,170,0.15)" }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Current Week</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#6E48AA", letterSpacing: "-0.02em" }}>Week {stats.currentWeek}</div>
+        </div>
+        <div className="card-solid" style={{ textAlign: "center", border: "1px solid rgba(110,72,170,0.15)" }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Daily Goal</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#6E48AA", letterSpacing: "-0.02em" }}>{stats.dailyGoal}</div>
+        </div>
+      </motion.div>
+
+      {/* View Mode Tabs */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+        style={{ marginBottom: 24 }}
+      >
+        <div style={{ display: "flex", gap: 8, background: "#FFFFFF", padding: 6, borderRadius: 12, border: "1px solid rgba(110,72,170,0.15)", boxShadow: "0 2px 8px rgba(110,72,170,0.08)", width: "fit-content" }}>
           {["overview", "this-week", "today"].map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg capitalize transition-colors ${
-                viewMode === mode 
-                  ? "bg-indigo-600 text-white shadow-md" 
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
+              style={{
+                padding: "8px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                borderRadius: 8,
+                border: "none",
+                cursor: "pointer",
+                textTransform: "capitalize",
+                transition: "all 0.2s ease",
+                background: viewMode === mode ? "linear-gradient(135deg, #6E48AA, #9D50BB)" : "transparent",
+                color: viewMode === mode ? "#FFFFFF" : "var(--text-secondary)",
+                boxShadow: viewMode === mode ? "0 4px 12px rgba(110,72,170,0.3)" : "none",
+              }}
             >
               {mode.replace("-", " ")}
             </button>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Settings Accordion */}
-      <PathSettings onRegenerate={(settings) => handleGenerate({ mode: "prompt", prompt: "Regenerate with new constraints", settings })} />
-
-      {/* Main Path View */}
-      <div className="mt-8">
+      {/* Main Content - Path Visualization in Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
+        className="card-solid"
+        style={{ padding: "32px 24px", minHeight: 400 }}
+      >
         {viewMode === "today" ? (
           <DailyTaskView pathData={pathData} onTaskComplete={handleUpdateNode} />
+        ) : viewMode === "this-week" ? (
+          <WeeklyTaskView pathData={pathData} onNodeClick={setSelectedNode} onTaskComplete={handleUpdateNode} />
         ) : (
-          <SnakePath 
-            pathData={pathData} 
-            viewMode={viewMode} 
-            onNodeClick={setSelectedNode} 
-          />
+          <SnakePathView pathData={pathData} viewMode={viewMode} onNodeClick={setSelectedNode} />
         )}
-      </div>
+      </motion.div>
 
-      {/* Side Panel Overlay */}
+      {/* Side Panel */}
       <AnimatePresence>
         {selectedNode && (
           <NodePanel 
@@ -167,7 +223,7 @@ export default function LearningPath() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </PageWrapper>
   );
 }
 
@@ -213,9 +269,15 @@ function LoadingScreen() {
   );
 }
 
+function SnakePathView({ pathData, viewMode, onNodeClick }) {
+  return (
+    <div style={{ position: "relative", width: "100%", minHeight: 400 }}>
+      <SnakePath pathData={pathData} viewMode={viewMode} onNodeClick={onNodeClick} />
+    </div>
+  );
+}
+
 function DailyTaskView({ pathData, onTaskComplete }) {
-  // Simplistic daily view implementation
-  // Find first uncompleted task day
   let todayDay = null;
   let wIdx = 0, dIdx = 0;
   for (let w = 0; w < pathData.weeks.length; w++) {
@@ -231,31 +293,263 @@ function DailyTaskView({ pathData, onTaskComplete }) {
     if (todayDay) break;
   }
 
-  if (!todayDay) return <div className="text-center p-12 text-slate-500">You've completed your entire path! 🎉</div>;
+  if (!todayDay) {
+    return (
+      <div style={{ textAlign: "center", padding: 48 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: "#1A0B42", marginBottom: 8 }}>Congratulations!</h3>
+        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>You've completed your entire learning path!</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl mx-auto bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
-      <h2 className="text-xl font-bold text-slate-800 mb-6">Today's Focus: Day {todayDay.day_number}</h2>
-      <div className="flex flex-col gap-4">
+    <div>
+      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1A0B42", marginBottom: 20 }}>Today's Focus: Day {todayDay.day_number}</h2>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {todayDay.tasks.map(task => (
-          <div key={task.id} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+          <motion.div
+            key={task.id}
+            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(110,72,170,0.15)" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              padding: 16,
+              borderRadius: 12,
+              border: "1px solid rgba(110,72,170,0.12)",
+              background: "#FFFFFF",
+              boxShadow: "0 2px 8px rgba(110,72,170,0.06)",
+              transition: "all 0.2s ease",
+            }}
+          >
             <button 
               onClick={() => onTaskComplete(wIdx, dIdx, task.id)}
-              className={`w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center border-2 transition-colors ${task.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 hover:border-indigo-400'}`}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: task.completed ? "none" : "2px solid #D1D5DB",
+                background: task.completed ? "linear-gradient(135deg, #6E48AA, #9D50BB)" : "#FFFFFF",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
             >
-              {task.completed && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
+              {task.completed && (
+                <svg style={{ width: 14, height: 14, color: "#FFFFFF" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
             </button>
-            <div className="flex-1">
-              <h3 className={`font-semibold ${task.completed ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{task.topic_name}</h3>
-              <p className="text-xs text-slate-500 mt-1 capitalize">{task.task_type} • {task.estimated_minutes} min • {task.difficulty}</p>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3 style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: task.completed ? "#9CA3AF" : "#1A0B42",
+                marginBottom: 4,
+                textDecoration: task.completed ? "line-through" : "none",
+              }}>
+                {task.topic_name}
+              </h3>
+              <p style={{
+                margin: 0,
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                textTransform: "capitalize",
+              }}>
+                {task.task_type} • {task.estimated_minutes} min • {task.difficulty}
+              </p>
             </div>
             {!task.completed && (
-              <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(task.youtube_query)}`} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+              <a
+                href={`https://www.youtube.com/results?search_query=${encodeURIComponent(task.youtube_query)}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  padding: "6px 16px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#dc2626",
+                  background: "rgba(220,38,38,0.08)",
+                  border: "1px solid rgba(220,38,38,0.2)",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  flexShrink: 0,
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = "rgba(220,38,38,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = "rgba(220,38,38,0.08)";
+                }}
+              >
                 Watch
               </a>
             )}
-          </div>
+          </motion.div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function WeeklyTaskView({ pathData, onNodeClick, onTaskComplete }) {
+  // Find current week
+  let currentWeek = null;
+  let weekIdx = 0;
+  
+  for (let w = 0; w < pathData.weeks.length; w++) {
+    const week = pathData.weeks[w];
+    const hasIncomplete = week.days.some(d => d.tasks.some(t => !t.completed));
+    if (hasIncomplete) {
+      currentWeek = week;
+      weekIdx = w;
+      break;
+    }
+  }
+
+  if (!currentWeek) {
+    currentWeek = pathData.weeks[pathData.weeks.length - 1];
+    weekIdx = pathData.weeks.length - 1;
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1A0B42", marginBottom: 8 }}>Week {currentWeek.week_number}</h2>
+        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>{currentWeek.milestone}</p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+        {currentWeek.days.map((day, dIdx) => {
+          const allCompleted = day.tasks.every(t => t.completed);
+          const someCompleted = day.tasks.some(t => t.completed);
+          
+          return (
+            <motion.div
+              key={day.day_number}
+              whileHover={{ y: -4, boxShadow: "0 12px 32px rgba(110,72,170,0.2)" }}
+              style={{
+                background: allCompleted 
+                  ? "linear-gradient(135deg, rgba(110,72,170,0.08) 0%, rgba(157,80,187,0.12) 100%)"
+                  : "#FFFFFF",
+                border: allCompleted 
+                  ? "2px solid rgba(110,72,170,0.3)" 
+                  : "1px solid rgba(110,72,170,0.12)",
+                borderRadius: 16,
+                padding: 20,
+                boxShadow: "0 2px 8px rgba(110,72,170,0.08)",
+                transition: "all 0.2s ease",
+                position: "relative",
+                overflow: "hidden"
+              }}
+            >
+              {allCompleted && (
+                <div style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 12px rgba(16,185,129,0.3)"
+                }}>
+                  <svg style={{ width: 18, height: 18, color: "white" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+              
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: "#6E48AA", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Day {day.day_number}</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  {day.tasks.length} task{day.tasks.length > 1 ? 's' : ''} • {day.tasks.reduce((sum, t) => sum + t.estimated_minutes, 0)} min
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {day.tasks.map((task, tIdx) => {
+                  const node = {
+                    task,
+                    weekNumber: currentWeek.week_number,
+                    dayNumber: day.day_number,
+                    weekIdx,
+                    dayIdx: dIdx
+                  };
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={() => onNodeClick(node)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: 12,
+                        background: task.completed ? "rgba(110,72,170,0.05)" : "rgba(255,255,255,0.8)",
+                        borderRadius: 10,
+                        border: "1px solid rgba(110,72,170,0.1)",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = task.completed ? "rgba(110,72,170,0.1)" : "rgba(110,72,170,0.05)";
+                        e.currentTarget.style.borderColor = "rgba(110,72,170,0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = task.completed ? "rgba(110,72,170,0.05)" : "rgba(255,255,255,0.8)";
+                        e.currentTarget.style.borderColor = "rgba(110,72,170,0.1)";
+                      }}
+                    >
+                      <div style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 6,
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: task.completed ? "none" : "2px solid #D1D5DB",
+                        background: task.completed ? "linear-gradient(135deg, #6E48AA, #9D50BB)" : "#FFFFFF",
+                      }}>
+                        {task.completed && (
+                          <svg style={{ width: 12, height: 12, color: "#FFFFFF" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: task.completed ? "#9CA3AF" : "#1A0B42",
+                          textDecoration: task.completed ? "line-through" : "none",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }}>
+                          {task.topic_name}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "capitalize" }}>
+                          {task.task_type} • {task.estimated_minutes}m
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

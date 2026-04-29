@@ -53,8 +53,8 @@ export default function PathNode({ node, onClick, index }) {
       </div>
 
       {/* Label underneath */}
-      <div className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 whitespace-nowrap transition-all duration-300 ${isCurrent ? 'text-indigo-800 font-bold text-sm' : 'text-slate-500 font-medium text-xs group-hover:text-slate-800'}`}>
-        {node.task.topic_name.length > 15 ? node.task.topic_name.substring(0, 15) + '...' : node.task.topic_name}
+      <div className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-1.5 rounded-lg bg-white shadow-md border border-slate-200 w-[140px] text-center transition-all duration-300 ${isCurrent ? 'text-indigo-700 font-bold text-xs border-indigo-200 bg-indigo-50' : 'text-slate-700 font-medium text-[11px] group-hover:text-slate-900 group-hover:shadow-lg group-hover:border-indigo-200'}`}>
+        <span className="block leading-tight" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word', width: '100%' }}>{node.task.topic_name}</span>
       </div>
     </motion.button>
   );
